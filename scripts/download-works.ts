@@ -235,16 +235,30 @@ async function processWorksFile(filePath: string): Promise<void> {
 }
 
 async function processBatch(prisma: PrismaClient, batch: any[]): Promise<void> {
-  // Use individual upserts to handle duplicates properly
-  for (const work of batch) {
-    try {
-      await prisma.work.upsert({
-        where: { openLibraryId: work.openLibraryId },
-        update: work,
-        create: work,
-      })
-    } catch (error) {
-      console.warn(`Error inserting work ${work.openLibraryId}: ${error}`)
+  // Wrap batch in transaction for better performance
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const work of batch) {
+        await tx.work.upsert({
+          where: { openLibraryId: work.openLibraryId },
+          update: work,
+          create: work,
+        })
+      }
+    })
+  } catch (error) {
+    console.warn(`Error processing batch: ${error}`)
+    // Fallback to individual upserts if batch fails
+    for (const work of batch) {
+      try {
+        await prisma.work.upsert({
+          where: { openLibraryId: work.openLibraryId },
+          update: work,
+          create: work,
+        })
+      } catch (individualError) {
+        console.warn(`Error inserting work ${work.openLibraryId}: ${individualError}`)
+      }
     }
   }
 }
@@ -252,56 +266,108 @@ async function processBatch(prisma: PrismaClient, batch: any[]): Promise<void> {
 async function processAuthorRelations(prisma: PrismaClient, relations: WorkAuthorRelation[]): Promise<void> {
   let processedRelations = 0
   let skippedRelations = 0
+  const RELATION_BATCH_SIZE = 500
 
-  for (const relation of relations) {
+  // Process relations in batches for better performance
+  for (let i = 0; i < relations.length; i += RELATION_BATCH_SIZE) {
+    const batch = relations.slice(i, i + RELATION_BATCH_SIZE)
+    
     try {
-      // First, find the author by openLibraryId
-      const author = await prisma.author.findUnique({
-        where: { openLibraryId: relation.authorKey }
-      })
+      await prisma.$transaction(async (tx) => {
+        for (const relation of batch) {
+          // Find the author by openLibraryId
+          const author = await tx.author.findUnique({
+            where: { openLibraryId: relation.authorKey }
+          })
 
-      if (!author) {
-        skippedRelations++
-        continue
-      }
-
-      // Then find the work by openLibraryId
-      const work = await prisma.work.findUnique({
-        where: { openLibraryId: relation.workId }
-      })
-
-      if (!work) {
-        skippedRelations++
-        continue
-      }
-
-      // Create the author-work relationship
-      await prisma.authorWork.upsert({
-        where: {
-          authorId_workId: {
-            authorId: author.id,
-            workId: work.id
+          if (!author) {
+            skippedRelations++
+            continue
           }
-        },
-        update: {
-          role: relation.role
-        },
-        create: {
-          authorId: author.id,
-          workId: work.id,
-          role: relation.role
+
+          // Find the work by openLibraryId
+          const work = await tx.work.findUnique({
+            where: { openLibraryId: relation.workId }
+          })
+
+          if (!work) {
+            skippedRelations++
+            continue
+          }
+
+          // Create the author-work relationship
+          await tx.authorWork.upsert({
+            where: {
+              authorId_workId: {
+                authorId: author.id,
+                workId: work.id
+              }
+            },
+            update: {
+              role: relation.role
+            },
+            create: {
+              authorId: author.id,
+              workId: work.id,
+              role: relation.role
+            }
+          })
+
+          processedRelations++
         }
       })
 
-      processedRelations++
-
-      if (processedRelations % 1000 === 0) {
+      if (processedRelations % 5000 === 0) {
         console.log(`Processed ${processedRelations} author relations, skipped ${skippedRelations}...`)
       }
 
     } catch (error) {
-      console.warn(`Error processing relation ${relation.authorKey} -> ${relation.workId}: ${error}`)
-      skippedRelations++
+      console.warn(`Error processing relation batch: ${error}`)
+      // Fallback to individual processing for this batch
+      for (const relation of batch) {
+        try {
+          const author = await prisma.author.findUnique({
+            where: { openLibraryId: relation.authorKey }
+          })
+
+          if (!author) {
+            skippedRelations++
+            continue
+          }
+
+          const work = await prisma.work.findUnique({
+            where: { openLibraryId: relation.workId }
+          })
+
+          if (!work) {
+            skippedRelations++
+            continue
+          }
+
+          await prisma.authorWork.upsert({
+            where: {
+              authorId_workId: {
+                authorId: author.id,
+                workId: work.id
+              }
+            },
+            update: {
+              role: relation.role
+            },
+            create: {
+              authorId: author.id,
+              workId: work.id,
+              role: relation.role
+            }
+          })
+
+          processedRelations++
+
+        } catch (individualError) {
+          console.warn(`Error processing relation ${relation.authorKey} -> ${relation.workId}: ${individualError}`)
+          skippedRelations++
+        }
+      }
     }
   }
 

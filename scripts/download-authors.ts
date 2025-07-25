@@ -195,16 +195,30 @@ async function processAuthorsFile(filePath: string): Promise<void> {
 }
 
 async function processBatch(prisma: PrismaClient, batch: any[]): Promise<void> {
-  // Use individual upserts to handle duplicates properly
-  for (const author of batch) {
-    try {
-      await prisma.author.upsert({
-        where: { openLibraryId: author.openLibraryId },
-        update: author,
-        create: author,
-      })
-    } catch (error) {
-      console.warn(`Error inserting author ${author.openLibraryId}: ${error}`)
+  // Wrap batch in transaction for better performance
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const author of batch) {
+        await tx.author.upsert({
+          where: { openLibraryId: author.openLibraryId },
+          update: author,
+          create: author,
+        })
+      }
+    })
+  } catch (error) {
+    console.warn(`Error processing batch: ${error}`)
+    // Fallback to individual upserts if batch fails
+    for (const author of batch) {
+      try {
+        await prisma.author.upsert({
+          where: { openLibraryId: author.openLibraryId },
+          update: author,
+          create: author,
+        })
+      } catch (individualError) {
+        console.warn(`Error inserting author ${author.openLibraryId}: ${individualError}`)
+      }
     }
   }
 }

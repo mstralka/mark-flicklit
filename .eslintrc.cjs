@@ -8,20 +8,28 @@ module.exports = {
   extends: [
     'eslint:recommended',
     '@typescript-eslint/recommended',
-    'plugin:vue/vue3-recommended',
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
   ],
   overrides: [],
-  parser: 'vue-eslint-parser',
+  parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
-    parser: '@typescript-eslint/parser',
+    ecmaFeatures: {
+      jsx: true,
+    },
   },
-  plugins: ['vue', '@typescript-eslint'],
+  plugins: ['react', 'react-hooks', '@typescript-eslint'],
   rules: {
     'quotes': ['error', 'single'],
     'semi': ['error', 'never'],
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-    'vue/multi-word-component-names': 'off',
+    'react/react-in-jsx-scope': 'off', // Not needed with React 17+
+  },
+  settings: {
+    react: {
+      version: 'detect',
+    },
   },
 }
