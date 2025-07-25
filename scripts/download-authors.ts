@@ -2,7 +2,7 @@ import { createWriteStream, existsSync, statSync } from 'fs'
 import { pipeline } from 'stream/promises'
 import { createGunzip } from 'zlib'
 import { createReadStream } from 'fs'
-import readline from 'readline'
+import * as readline from 'readline'
 import { PrismaClient } from '@prisma/client'
 
 const DUMP_URL = 'https://openlibrary.org/data/ol_dump_authors_latest.txt.gz'
@@ -77,8 +77,9 @@ async function downloadFile(url: string, filePath: string): Promise<void> {
   let lastProgressTime = Date.now()
   
   // Create a transform stream to track progress
-  const progressStream = new (require('stream').Transform)({
-    transform(chunk: any, encoding: any, callback: any) {
+  const { Transform } = require('stream')
+  const progressStream = new Transform({
+    transform(chunk: Buffer, _encoding: string, callback: (error?: Error | null, data?: Buffer) => void) {
       downloaded += chunk.length
       
       // Update progress every 500ms to avoid too much output
@@ -133,7 +134,7 @@ async function processAuthorsFile(filePath: string): Promise<void> {
         const columns = line.split('\t')
         if (columns.length < 5) continue
 
-        const [type, key, revision, lastModified, jsonData] = columns
+        const [type, _key, _revision, _lastModified, jsonData] = columns
         
         // Only process author records
         if (type !== '/type/author') continue

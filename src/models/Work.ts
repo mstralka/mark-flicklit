@@ -52,12 +52,12 @@ export function parseWork(raw: WorkRaw): Work {
     description: raw.description || undefined,
     firstPublishDate: raw.firstPublishDate || undefined,
     firstSentence: raw.firstSentence || undefined,
-    subjects: parseJsonArray(raw.subjects),
-    subjectPlaces: parseJsonArray(raw.subjectPlaces),
-    subjectTimes: parseJsonArray(raw.subjectTimes),
-    subjectPeople: parseJsonArray(raw.subjectPeople),
-    originalLanguages: parseJsonArray(raw.originalLanguages),
-    otherTitles: parseJsonArray(raw.otherTitles),
+    subjects: parseJsonArray(raw.subjects || null),
+    subjectPlaces: parseJsonArray(raw.subjectPlaces || null),
+    subjectTimes: parseJsonArray(raw.subjectTimes || null),
+    subjectPeople: parseJsonArray(raw.subjectPeople || null),
+    originalLanguages: parseJsonArray(raw.originalLanguages || null),
+    otherTitles: parseJsonArray(raw.otherTitles || null),
   }
 }
 

@@ -21,6 +21,7 @@
     },
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "prisma/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.d.ts", "prisma/**/*.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

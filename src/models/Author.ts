@@ -49,11 +49,11 @@ export function parseAuthor(raw: AuthorRaw): Author {
     birthDate: raw.birthDate || undefined,
     deathDate: raw.deathDate || undefined,
     bio: raw.bio || undefined,
-    alternateNames: parseJsonArray(raw.alternateNames),
+    alternateNames: parseJsonArray(raw.alternateNames || null),
     location: raw.location || undefined,
     easternOrder: raw.easternOrder || undefined,
     wikipedia: raw.wikipedia || undefined,
-    links: parseJsonArray(raw.links),
+    links: parseJsonArray(raw.links || null),
   }
 }
 
