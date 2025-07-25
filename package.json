@@ -20,7 +20,8 @@
     "import:authors:force": "tsx scripts/download-authors.ts --force-download",
     "import:works": "tsx scripts/download-works.ts",
     "import:works:skip-download": "tsx scripts/download-works.ts --skip-download",
-    "import:works:force": "tsx scripts/download-works.ts --force-download"
+    "import:works:force": "tsx scripts/download-works.ts --force-download",
+    "test:recommendations": "tsx src/test-recommendations.ts"
   },
   "keywords": [
     "typescript",
