@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db?journal_mode=WAL"
+}
+
+model Author {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // OpenLibrary fields
+  openLibraryId String?  @unique
+  name          String
+  personalName  String?
+  birthDate     String?
+  deathDate     String?
+  bio           String?
+  alternateNames String? // JSON array stored as text
+  location      String?
+  easternOrder  Boolean? @default(false)
+  wikipedia     String?
+  links         String? // JSON array stored as text
+  
+  // Relations
+  works         AuthorWork[]
+  
+  @@map("authors")
+}
+
+model Work {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // OpenLibrary fields
+  openLibraryId    String?  @unique
+  title            String
+  subtitle         String?
+  description      String?
+  firstPublishDate String?
+  firstSentence    String?
+  subjects         String? // JSON array stored as text
+  subjectPlaces    String? // JSON array stored as text
+  subjectTimes     String? // JSON array stored as text
+  subjectPeople    String? // JSON array stored as text
+  originalLanguages String? // JSON array stored as text
+  otherTitles      String? // JSON array stored as text
+  
+  // Relations
+  authors          AuthorWork[]
+  userInteractions UserInteraction[]
+  
+  @@map("works")
+}
+
+model AuthorWork {
+  id       String @id @default(cuid())
+  authorId String
+  workId   String
+  role     String? // e.g., "author", "editor", "translator"
+  
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  work     Work   @relation(fields: [workId], references: [id], onDelete: Cascade)
+  
+  @@unique([authorId, workId])
+  @@map("author_work")
+}
+
+model UserInteraction {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  workId    String
+  userId    String?  // Optional for now, can be added later for multi-user support
+  liked     Boolean  // true for swipe right (like), false for swipe left (dislike)
+  
+  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  
+  @@map("user_interactions")
+}
