@@ -75,7 +75,7 @@ async function testRecommendationEngine() {
 
     updatedRecs.recommendations.forEach((rec, index) => {
       console.log(`  ${index + 1}. Work ID: ${rec.workId.substring(0, 8)}... (Score: ${rec.finalScore.toFixed(3)})`)
-      console.log(`     Content: ${rec.contentScore.toFixed(3)}, Novelty: ${rec.noveltyBonus.toFixed(3)}, Negative: ${rec.negativeMultiplier.toFixed(3)}`)
+      console.log(`     Content: ${rec.contentScore.toFixed(3)}, Collaborative: ${rec.collaborativeScore.toFixed(3)}, Novelty: ${rec.noveltyBonus.toFixed(3)}, Negative: ${rec.negativeMultiplier.toFixed(3)}`)
       console.log(`     Reasons: ${rec.reasons.join(', ') || 'No specific reasons'}`)
     })
     console.log()

@@ -3,26 +3,25 @@ import type {
   User, 
   RecommendationRequest, 
   RecommendationResponse, 
-  RecommendationScore,
-  UserInteraction
+  RecommendationScore
 } from '../types/recommendation'
 import type { WorkWithAuthors } from '../models/Work'
 import { parseWork } from '../models/Work'
 import { parseAuthor } from '../models/Author'
-import { ContentSimilarity } from './ContentSimilarity'
 import { UserBuilder } from './UserBuilder'
+import { CollaborativeFilter } from './CollaborativeFilter'
 
 export class RecommendationEngine {
   private prisma: PrismaClient
-  private contentSimilarity: ContentSimilarity
   private userBuilder: UserBuilder
+  private collaborativeFilter: CollaborativeFilter
   private userCache: Map<string, { user: User; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 60 * 60 * 1000 // 1 hour in milliseconds
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma
-    this.contentSimilarity = new ContentSimilarity()
     this.userBuilder = new UserBuilder(prisma)
+    this.collaborativeFilter = new CollaborativeFilter(prisma)
   }
 
   /**
@@ -165,18 +164,26 @@ export class RecommendationEngine {
     // Content-based score
     const contentScore = this.calculateContentScore(user, work, reasons)
 
+    // Collaborative filtering score
+    const collaborativeScore = await this.calculateCollaborativeScore(user, work, reasons)
+
     // Novelty bonus (for introducing new subjects/authors)
     const noveltyBonus = this.calculateNoveltyBonus(user, work, reasons)
 
     // Negative feedback multiplier
     const negativeMultiplier = this.calculateNegativeMultiplier(user, work, reasons)
 
-    // Final weighted score
-    const finalScore = (contentScore + noveltyBonus) * negativeMultiplier
+    // Final weighted score: content (60%) + collaborative (30%) + novelty (10%)
+    const finalScore = (
+      contentScore * 0.6 + 
+      collaborativeScore * 0.3 + 
+      noveltyBonus * 0.1
+    ) * negativeMultiplier
 
     return {
       workId: work.id,
       contentScore,
+      collaborativeScore,
       noveltyBonus,
       negativeMultiplier,
       finalScore,
@@ -238,6 +245,37 @@ export class RecommendationEngine {
     }
 
     return Math.min(score, 1) // Cap at 1.0
+  }
+
+  /**
+   * Calculate collaborative filtering score
+   */
+  private async calculateCollaborativeScore(user: User, work: WorkWithAuthors, reasons: string[]): Promise<number> {
+    try {
+      const collaborativeRecs = await this.collaborativeFilter.getCollaborativeRecommendations(
+        user.id,
+        [], // Don't exclude any works for scoring
+        50  // Get more recommendations to find this specific work
+      )
+
+      const recommendation = collaborativeRecs.find(rec => rec.workId === work.id)
+      
+      if (recommendation) {
+        const score = recommendation.score * recommendation.confidence
+        
+        if (score > 0.3) {
+          const userCount = recommendation.supportingUsers.length
+          reasons.push(`Liked by ${userCount} similar user${userCount > 1 ? 's' : ''}`)
+        }
+        
+        return Math.min(score, 1) // Cap at 1.0
+      }
+      
+      return 0
+    } catch (error) {
+      console.error('Error calculating collaborative score:', error)
+      return 0
+    }
   }
 
   /**
@@ -330,6 +368,7 @@ export class RecommendationEngine {
     return candidateWorks.slice(0, limit).map(work => ({
       workId: work.id,
       contentScore: 0.5,
+      collaborativeScore: 0,
       noveltyBonus: 0.1,
       negativeMultiplier: 1.0,
       finalScore: 0.6,

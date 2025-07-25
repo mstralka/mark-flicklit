@@ -21,7 +21,8 @@
     "import:works": "tsx scripts/download-works.ts",
     "import:works:skip-download": "tsx scripts/download-works.ts --skip-download",
     "import:works:force": "tsx scripts/download-works.ts --force-download",
-    "test:recommendations": "tsx src/test-recommendations.ts"
+    "test:recommendations": "tsx src/test-recommendations.ts",
+    "test:collaborative": "tsx src/test-collaborative.ts"
   },
   "keywords": [
     "typescript",

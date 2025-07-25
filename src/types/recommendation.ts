@@ -32,6 +32,7 @@ export interface WorkSimilarity {
 export interface RecommendationScore {
   workId: string
   contentScore: number
+  collaborativeScore: number
   noveltyBonus: number
   negativeMultiplier: number
   finalScore: number

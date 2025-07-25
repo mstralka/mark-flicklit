@@ -1,5 +1,6 @@
-import type { Work, WorkWithAuthors } from '../models/Work'
-import type { ContentFeatures, SimilarityWeights, WorkSimilarity, DEFAULT_SIMILARITY_WEIGHTS } from '../types/recommendation'
+import type { WorkWithAuthors } from '../models/Work'
+import type { ContentFeatures, SimilarityWeights, WorkSimilarity } from '../types/recommendation'
+import { DEFAULT_SIMILARITY_WEIGHTS } from '../types/recommendation'
 
 export class ContentSimilarity {
   private weights: SimilarityWeights
