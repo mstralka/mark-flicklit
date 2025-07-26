@@ -33,6 +33,7 @@
     "import:covers:force": "tsx scripts/download-covers.ts --force-download",
     "import:worldcat": "tsx scripts/import-worldcat-books.ts",
     "import:google-books": "tsx scripts/import-google-books.ts",
+    "export:google-books": "tsx scripts/export-google-books.ts",
     "test:recommendations": "cd src/backend && tsx ../test-recommendations.ts",
     "test:collaborative": "cd src/backend && tsx ../test-collaborative.ts"
   },

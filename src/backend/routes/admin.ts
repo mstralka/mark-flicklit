@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { AuthorController } from '../http/controllers/Admin/AuthorController'
 import { DashboardController } from '../http/controllers/Admin/DashboardController'
+import googleBooksRouter from './admin/googleBooks'
 
 const router = Router()
 
@@ -15,6 +16,9 @@ router.get('/analytics', (req, res) => dashboardController.analytics(req, res))
 // Author resource routes (Laravel-style resource routing)
 router.get('/authors', (req, res) => authorController.index(req, res))
 router.get('/authors/:id', (req, res) => authorController.show(req, res))
+
+// Google Books routes
+router.use('/google-books', googleBooksRouter)
 
 // Cleanup middleware (Laravel-style service provider cleanup)
 router.use(async (req, res, next) => {

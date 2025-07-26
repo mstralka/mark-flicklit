@@ -18,6 +18,7 @@ interface AdminLayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: HomeIcon },
+  { name: 'Google Books', href: '/admin/google-books', icon: BookOpenIcon },
   { name: 'Authors', href: '/admin/authors', icon: UsersIcon },
   { name: 'Works', href: '/admin/works', icon: BookOpenIcon },
   { name: 'Analytics', href: '/admin/analytics', icon: ChartBarIcon },

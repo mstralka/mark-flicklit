@@ -16,6 +16,7 @@ const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 // Admin components
 const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
 const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'))
+const GoogleBooksPage = lazy(() => import('./pages/admin/GoogleBooksPage').then(m => ({ default: m.GoogleBooksPage })))
 const AuthorsPage = lazy(() => import('./pages/admin/AuthorsPage'))
 
 function App() {
@@ -86,6 +87,16 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <DashboardPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/google-books" 
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <GoogleBooksPage />
                   </AdminLayout>
                 </ProtectedRoute>
               } 

@@ -35,6 +35,9 @@ dist-ssr
 # Data dumps
 data/
 
+# Export files
+exports/
+
 # Claude Code
 .claude/settings.local.json
 

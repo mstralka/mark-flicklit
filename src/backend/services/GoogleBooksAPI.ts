@@ -134,10 +134,18 @@ export class GoogleBooksAPI {
     private baseUrl = 'https://www.googleapis.com/books/v1'
     private apiKey?: string
     private prisma: PrismaClient
+    private lastRequestTime: number = 0
+    private requestCount: number = 0
+    private dailyRequestLimit: number = 1000 // Default for free tier
 
     constructor(apiKey?: string) {
         this.apiKey = apiKey || process.env.GOOGLE_BOOKS_API_KEY
         this.prisma = new PrismaClient()
+
+        // Set higher limit if API key is provided (assuming paid tier)
+        if (this.apiKey) {
+            this.dailyRequestLimit = 100000
+        }
     }
 
     /**
@@ -162,17 +170,7 @@ export class GoogleBooksAPI {
         try {
             console.log(`🔍 Searching Google Books: ${params.q}`)
 
-            const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'FlickLit/1.0 (https://flicklit.com)',
-                    'Accept': 'application/json'
-                }
-            })
-
-            if (!response.ok) {
-                throw new Error(`Google Books API error: ${response.status} ${response.statusText}`)
-            }
-
+            const response = await this.makeApiRequest(url)
             const data = await response.json() as GoogleBooksSearchResult
             return data
 
@@ -219,11 +217,9 @@ export class GoogleBooksAPI {
         const url = `${this.baseUrl}/volumes/${volumeId}?${searchParams.toString()}`
 
         try {
-            const response = await fetch(url)
-            if (!response.ok) {
-                if (response.status === 404) return null
-                throw new Error(`Google Books API error: ${response.status} ${response.statusText}`)
-            }
+            const response = await this.makeApiRequest(url)
+
+            if (response.status === 404) return null
 
             return await response.json() as GoogleBooksVolume
 
@@ -236,8 +232,14 @@ export class GoogleBooksAPI {
     /**
      * Save Google Books volume to database
      */
-    async saveVolume(volume: GoogleBooksVolume, workId?: number): Promise<number> {
+    async saveVolume(volume: GoogleBooksVolume, workId?: number): Promise<number | null> {
         try {
+            // Skip volumes without titles
+            if (!volume.volumeInfo.title) {
+                console.log(`📚 Skipping Google Books record ${volume.id}: No title provided`)
+                return null
+            }
+
             const existingRecord = await this.prisma.googleBook.findUnique({
                 where: {googleBooksId: volume.id}
             })
@@ -272,7 +274,9 @@ export class GoogleBooksAPI {
         for (const volume of volumes) {
             try {
                 const id = await this.saveVolume(volume)
-                ids.push(id)
+                if (id !== null) {
+                    ids.push(id)
+                }
             } catch (error) {
                 console.warn(`Failed to save volume ${volume.id}:`, error)
             }
@@ -381,10 +385,153 @@ export class GoogleBooksAPI {
     }
 
     /**
-     * Rate limiting helper
+     * Exponential backoff with jitter for rate limiting
+     */
+    private async exponentialBackoff(attempt: number, baseDelayMs: number = 1000): Promise<void> {
+        // Calculate exponential backoff: baseDelay * (2^attempt) with jitter
+        const exponentialDelay = baseDelayMs * Math.pow(2, attempt)
+        const jitter = Math.random() * 0.1 * exponentialDelay // Add up to 10% jitter
+        const totalDelay = Math.min(exponentialDelay + jitter, 300000) // Cap at 5 minutes
+
+        console.log(`   ⏳ Rate limit hit, backing off ${(totalDelay / 1000).toFixed(1)}s (attempt ${attempt + 1})`)
+        return new Promise(resolve => setTimeout(resolve, totalDelay))
+    }
+
+    /**
+     * Rate limiting helper with request counting
      */
     private async rateLimitDelay(delayMs: number = 100): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, delayMs))
+        const now = Date.now()
+        const timeSinceLastRequest = now - this.lastRequestTime
+
+        // Enforce minimum delay between requests
+        if (timeSinceLastRequest < delayMs) {
+            await new Promise(resolve => setTimeout(resolve, delayMs - timeSinceLastRequest))
+        }
+
+        this.lastRequestTime = Date.now()
+        this.requestCount++
+
+        // Warn when approaching daily limits
+        if (this.requestCount > this.dailyRequestLimit * 0.9) {
+            console.log(`   ⚠️  Approaching daily request limit: ${this.requestCount}/${this.dailyRequestLimit}`)
+        }
+    }
+
+    /**
+     * Make API request with retry logic for rate limiting
+     */
+    private async makeApiRequest(url: string, maxRetries: number = 5): Promise<Response> {
+        let lastError: Error = new Error('Unknown error')
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                // Apply rate limiting delay before each request
+                await this.rateLimitDelay(this.apiKey ? 50 : 100) // Shorter delay with API key
+
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'FlickLit/1.0 gzip (https://flicklit.com)',
+                        'Accept': 'application/json',
+                        'Accept-Encoding': 'gzip'
+                    }
+                })
+
+                // Log local quota tracking (Google doesn't provide headers)
+                this.logRateLimitInfo()
+
+                // Handle rate limiting
+                if (response.status === 429) {
+                    if (attempt === maxRetries) {
+                        throw new Error(`Google Books API rate limit exceeded after ${maxRetries + 1} attempts`)
+                    }
+
+                    // Check if we have retry-after header
+                    const retryAfter = response.headers.get('retry-after')
+                    if (retryAfter) {
+                        const retryDelayMs = parseInt(retryAfter) * 1000
+                        console.log(`   ⏳ Rate limit with Retry-After: ${retryAfter}s`)
+                        await new Promise(resolve => setTimeout(resolve, retryDelayMs))
+                    } else {
+                        // Use exponential backoff
+                        await this.exponentialBackoff(attempt)
+                    }
+                    continue
+                }
+
+                // Handle other HTTP errors
+                if (!response.ok) {
+                    throw new Error(`Google Books API error: ${response.status} ${response.statusText}`)
+                }
+
+                return response
+
+            } catch (error) {
+                lastError = error as Error
+
+                // Only retry on network errors or 429s
+                if (attempt < maxRetries && (
+                    error instanceof TypeError || // Network errors
+                    (error as Error).message.includes('429') ||
+                    (error as Error).message.includes('rate limit')
+                )) {
+                    await this.exponentialBackoff(attempt)
+                    continue
+                }
+
+                // Don't retry other errors
+                break
+            }
+        }
+
+        throw lastError
+    }
+
+    /**
+     * Log rate limit information using local tracking
+     * (Google Books API doesn't provide quota headers)
+     */
+    private logRateLimitInfo(): void {
+        const estimated = Math.max(0, this.dailyRequestLimit - this.requestCount)
+        const percentUsed = (this.requestCount / this.dailyRequestLimit) * 100
+        const percentRemaining = ((estimated / this.dailyRequestLimit) * 100).toFixed(1)
+
+        // Only log every 10 requests to reduce noise
+        if (this.requestCount % 10 === 0 || estimated < 100) {
+            console.log(`   📊 Estimated quota: ${estimated.toLocaleString()}/${this.dailyRequestLimit.toLocaleString()} remaining (${percentRemaining}%)`)
+        }
+
+        // Warn when running low
+        if (estimated < 100 && estimated > 0) {
+            console.log(`   ⚠️  API quota running low: ${estimated} requests remaining`)
+        } else if (estimated === 0) {
+            console.log(`   🚫 Estimated daily quota exhausted (${this.requestCount}/${this.dailyRequestLimit})`)
+        }
+
+        // Warn at key milestones
+        if (percentUsed >= 90 && this.requestCount % 50 === 0) {
+            console.log(`   ⚠️  Used ${percentUsed.toFixed(1)}% of daily quota`)
+        }
+    }
+
+    /**
+     * Get current API usage statistics
+     */
+    public getUsageStats(): {
+        requestCount: number
+        dailyLimit: number
+        estimatedRemaining: number
+        percentUsed: number
+    } {
+        const estimatedRemaining = Math.max(0, this.dailyRequestLimit - this.requestCount)
+        const percentUsed = (this.requestCount / this.dailyRequestLimit) * 100
+
+        return {
+            requestCount: this.requestCount,
+            dailyLimit: this.dailyRequestLimit,
+            estimatedRemaining,
+            percentUsed
+        }
     }
 
     async disconnect(): Promise<void> {

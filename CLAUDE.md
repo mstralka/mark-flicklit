@@ -133,10 +133,37 @@ docker/                        # Docker configuration
 
 **API Architecture:**
 - RESTful API with Express.js and TypeScript
+- Laravel-style controllers extending BaseController for consistent error handling
 - JWT-based authentication with secure password hashing
 - Prisma ORM for database operations
 - Zod validation for request/response schemas
 - Health check endpoints for monitoring
+
+**Controller Pattern:**
+- Use Laravel-style controllers in `src/backend/http/controllers/` directory
+- All controllers extend `BaseController` for consistent response methods
+- Controllers handle business logic, routes remain thin
+- Example structure:
+  ```typescript
+  export class ResourceController extends BaseController {
+    public async index(req: Request, res: Response): Promise<Response> {
+      // List resources with pagination
+    }
+    public async show(req: Request, res: Response): Promise<Response> {
+      // Show single resource
+    }
+    public async store(req: Request, res: Response): Promise<Response> {
+      // Create new resource
+    }
+    public async update(req: Request, res: Response): Promise<Response> {
+      // Update existing resource
+    }
+    public async destroy(req: Request, res: Response): Promise<Response> {
+      // Delete resource
+    }
+  }
+  ```
+- Routes reference controller methods: `router.get('/', (req, res) => controller.index(req, res))`
 
 **Frontend Architecture:**
 - React SPA with TypeScript and functional components
@@ -144,6 +171,19 @@ docker/                        # Docker configuration
 - HTTP client service layer for API communication
 - React Router for navigation
 - Tailwind CSS + Headless UI for styling
+
+**Authentication & API Client:**
+- Use `apiClient` from `src/frontend/api/client.ts` for all API requests
+- `apiClient.get()`, `apiClient.request()` automatically include JWT Bearer token
+- NEVER use raw `fetch()` for authenticated endpoints - always use `apiClient`
+- Token managed by AuthService and stored in Zustand auth store
+- Example usage:
+  ```typescript
+  const response = await apiClient.get<DataType>('/api/admin/resource')
+  if (response.success && response.data) {
+    // Handle successful response
+  }
+  ```
 
 **Data Flow:**
 - Users authenticate via JWT tokens
@@ -198,3 +238,23 @@ docker/                        # Docker configuration
 - Junction table follows Laravel convention: `author_work` (alphabetical order)
 - Docker images use Ubuntu base (not Alpine) for better compatibility
 - All containers run as non-root users for security
+
+## Development Guidelines
+
+**Backend Routes & Controllers:**
+- Always create Laravel-style controllers extending BaseController
+- Keep routes thin - business logic belongs in controllers
+- Use proper HTTP status codes via BaseController methods (`success()`, `error()`, `notFound()`)
+- Apply authentication middleware at route level: `router.use(authenticate)`
+- Group related routes in separate files (e.g., `admin/googleBooks.ts`)
+
+**Frontend API Integration:**
+- Always use `apiClient` for authenticated API calls
+- Never use raw `fetch()` for protected endpoints
+- Handle API responses consistently with success/error checking
+- Use TypeScript interfaces for API response types
+
+**Quality Assurance:**
+- Run `yarn typecheck` before committing changes
+- Run `yarn lint` and fix all issues before committing
+- Ensure all new functionality follows existing patterns

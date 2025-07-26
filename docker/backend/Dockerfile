@@ -19,6 +19,7 @@ RUN yarn install --frozen-lockfile --production=false
 
 # Copy only necessary source files
 COPY src/backend ./src/backend
+COPY scripts ./scripts
 COPY tsconfig.json ./
 
 # Generate Prisma client
@@ -35,6 +36,7 @@ RUN apt-get update && apt-get install -y \
     openssl \
     curl \
     dumb-init \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -55,7 +57,7 @@ RUN yarn install --frozen-lockfile --production=true && \
 COPY --from=base /app/dist/backend ./dist
 COPY --from=base /app/src/backend/prisma ./prisma
 COPY --from=base /app/src/backend/generated ./generated
-COPY --from=base /app/src/backend/scripts ./scripts
+COPY --from=base /app/scripts ./scripts
 
 # Create data directory for OpenLibrary imports
 RUN mkdir -p /app/data && chown -R nodejs:nodejs /app

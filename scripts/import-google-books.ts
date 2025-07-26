@@ -377,6 +377,9 @@ async function comprehensiveImport() {
     // Create or resume session for progress tracking
     const session = await createOrResumeSession('comprehensive')
     console.log(`🎯 Session ID: ${session.sessionId}`)
+    
+    // Get language restriction
+    const langRestrict = getLanguageRestriction()
 
     const stats: ImportStats = {
         processed: 0,
@@ -450,7 +453,7 @@ async function comprehensiveImport() {
                             q: query,
                             maxResults: maxResultsPerPage,
                             startIndex: startIndex,
-                            langRestrict: 'en',
+                            langRestrict: langRestrict,
                             printType: 'books',
                             projection: 'full',
                             orderBy: 'relevance',
@@ -487,11 +490,17 @@ async function comprehensiveImport() {
                                     continue
                                 }
 
-                                await googleBooksAPI.saveVolume(volume)
-                                stats.imported++
+                                const saveResult = await googleBooksAPI.saveVolume(volume)
+                                if (saveResult !== null) {
+                                    stats.imported++
+                                    queryImported++
+                                    phaseImported++
+                                } else {
+                                    stats.skipped++
+                                    querySkipped++
+                                    phaseSkipped++
+                                }
                                 stats.processed++
-                                queryImported++
-                                phaseImported++
 
                             } catch (error) {
                                 stats.errors++
@@ -585,6 +594,9 @@ async function comprehensiveImport() {
 
 async function standardImport() {
     console.log('📚 Starting curated Google Books import...')
+    
+    // Get language restriction
+    const langRestrict = getLanguageRestriction()
 
     const stats: ImportStats = {
         processed: 0,
@@ -609,7 +621,7 @@ async function standardImport() {
 
                 // Search using this strategy
                 const searchResults = await googleBooksAPI.searchBooks({
-                    langRestrict: 'en',
+                    langRestrict: langRestrict,
                     maxResults: maxResults,
                     orderBy: 'relevance',
                     printType: 'books',
@@ -641,10 +653,15 @@ async function standardImport() {
                             continue
                         }
 
-                        await googleBooksAPI.saveVolume(volume) // No workId needed
-                        stats.imported++
+                        const saveResult = await googleBooksAPI.saveVolume(volume) // No workId needed
+                        if (saveResult !== null) {
+                            stats.imported++
+                            strategyImported++
+                        } else {
+                            stats.skipped++
+                            strategySkipped++
+                        }
                         stats.processed++
-                        strategyImported++
 
                     } catch (error) {
                         stats.errors++
@@ -855,6 +872,22 @@ async function resetSession(sessionId: string) {
     console.log('   Session reset complete')
 }
 
+// Get language restriction from command line args
+function getLanguageRestriction(): string {
+    const args = process.argv.slice(2)
+    const langIndex = args.indexOf('--language')
+    
+    if (langIndex !== -1 && langIndex + 1 < args.length) {
+        const language = args[langIndex + 1]
+        console.log(`🌍 Language restriction: ${language}`)
+        return language
+    }
+    
+    // Default to English
+    console.log('🌍 Language restriction: en (default)')
+    return 'en'
+}
+
 // Main import function that handles both modes
 async function importGoogleBooks() {
     const args = process.argv.slice(2)
@@ -890,6 +923,7 @@ Usage:
 
 Options:
   --comprehensive                  # Enable comprehensive mode (WARNING: Long-running!)
+  --language LANG                 # Language restriction (ISO 639-1 code, default: en)
   --status                        # Show status of all import sessions
   --cleanup                       # Clean up completed sessions
   --reset SESSION_ID              # Reset/delete a specific session
@@ -933,6 +967,11 @@ API Requirements:
 
 Environment variables:
   GOOGLE_BOOKS_API_KEY             # Required for comprehensive mode
+
+Examples:
+  yarn import:google-books --language fr     # Import French books only
+  yarn import:google-books --language es     # Import Spanish books only
+  yarn import:google-books --comprehensive --language de  # Comprehensive German import
 `
 
 if (args.includes('--help') || args.includes('-h')) {
