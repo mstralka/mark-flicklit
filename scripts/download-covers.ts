@@ -125,13 +125,7 @@ async function countCoversInFile(filePath: string): Promise<number> {
 }
 
 async function processCoversFile(filePath: string, _totalCount: number): Promise<void> {
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL + '&connection_limit=20&pool_timeout=60&connect_timeout=30'
-      }
-    }
-  })
+  const prisma = new PrismaClient()
   let processedCount = 0
   let skippedCount = 0
   let batch: any[] = []

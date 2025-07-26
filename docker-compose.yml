@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-flicklit}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-flicklit}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-flicklit}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-flicklit}?schema=public&connection_limit=50&pool_timeout=120&connect_timeout=30
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       PORT: 3001
