@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:backend": "tsc --noEmit --project src/backend/tsconfig.json",
     "typecheck:frontend": "tsc --noEmit --project src/frontend/tsconfig.json",
+    "typecheck:scripts": "tsc --noEmit --project scripts/tsconfig.json",
     "db:generate": "cd src/backend && prisma generate",
     "db:push": "cd src/backend && prisma db push",
     "db:migrate": "cd src/backend && prisma migrate dev",

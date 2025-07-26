@@ -354,7 +354,7 @@ async function exportToPostgres(options: ExportOptions): Promise<void> {
     }
     
     // Build pg_dump command
-    const pgDumpArgs = []
+    const pgDumpArgs: string[] = []
     
     // Connection parameters
     pgDumpArgs.push('--host', host)
