@@ -37,16 +37,16 @@ echo ========================================
 echo.
 
 call :print_status "Stopping development services..."
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+docker compose -f docker compose.yml -f docker compose.dev.yml down
 
 if "%1"=="/volumes" (
     call :print_warning "Removing volumes (this will delete database data)..."
-    docker-compose -f docker-compose.yml -f docker-compose.dev.yml down --volumes
+    docker compose -f docker compose.yml -f docker compose.dev.yml down --volumes
 )
 
 if "%1"=="/clean" (
     call :print_status "Cleaning up containers, networks, and orphaned resources..."
-    docker-compose -f docker-compose.yml -f docker-compose.dev.yml down --volumes --remove-orphans
+    docker compose -f docker compose.yml -f docker compose.dev.yml down --volumes --remove-orphans
     docker system prune -f
 )
 

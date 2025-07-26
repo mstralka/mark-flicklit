@@ -77,12 +77,12 @@ goto :eof
 
 :cleanup
 call :print_status "Cleaning up old containers..."
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans >nul 2>&1
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans >nul 2>&1
 goto :eof
 
 :build_images
 call :print_status "Building Docker images..."
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --parallel
+docker compose -f docker-compose.yml -f docker-compose.dev.yml build --parallel
 if !errorlevel! neq 0 (
     call :print_error "Failed to build Docker images"
     pause
@@ -99,7 +99,7 @@ if exist ".env.docker.local" (
     set "env_file=--env-file .env.docker.local"
 )
 
-docker-compose !env_file! -f docker-compose.yml -f docker-compose.dev.yml up -d
+docker compose !env_file! -f docker-compose.yml -f docker-compose.dev.yml up -d
 if !errorlevel! neq 0 (
     call :print_error "Failed to start services"
     pause
@@ -114,7 +114,7 @@ REM Wait for MySQL
 call :print_status "Waiting for MySQL..."
 set timeout=30
 :wait_mysql
-docker-compose exec -T mysql mysqladmin ping -h localhost --silent >nul 2>&1
+docker compose exec -T mysql mysqladmin ping -h localhost --silent >nul 2>&1
 if !errorlevel! equ 0 goto :mysql_ready
 timeout /t 2 /nobreak >nul
 set /a timeout-=1
@@ -159,10 +159,10 @@ echo    ✓ Node.js debugger on port 9229
 echo    ✓ File watching enabled
 echo.
 echo 📋 Useful Commands:
-echo    View logs:            docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
-echo    Stop services:        docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
-echo    Restart service:      docker-compose -f docker-compose.yml -f docker-compose.dev.yml restart ^<service^>
-echo    Run migrations:       docker-compose exec backend yarn db:push
+echo    View logs:            docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+echo    Stop services:        docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+echo    Restart service:      docker compose -f docker-compose.yml -f docker-compose.dev.yml restart ^<service^>
+echo    Run migrations:       docker compose exec backend yarn db:push
 echo.
 goto :eof
 
@@ -220,7 +220,7 @@ REM Wait for services to be ready
 call :wait_for_services
 if !errorlevel! neq 0 (
     call :print_error "Failed to start services. Check the logs:"
-    echo   docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs
+    echo   docker compose -f docker-compose.yml -f docker-compose.dev.yml logs
     pause
     exit /b 1
 )
@@ -231,7 +231,7 @@ REM Follow logs if requested
 if "%1"=="/logs" (
     echo.
     call :print_status "Following logs (Ctrl+C to stop):"
-    docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
 ) else (
     echo.
     call :print_status "Run with /logs to follow logs automatically"

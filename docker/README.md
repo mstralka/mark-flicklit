@@ -24,12 +24,12 @@ The Docker stack includes:
 
 2. Start the stack:
    ```bash
-   docker-compose --env-file .env.docker.local up -d
+   docker compose --env-file .env.docker.local up -d
    ```
 
 3. Run database migrations:
    ```bash
-   docker-compose exec backend yarn db:push
+   docker compose exec backend yarn db:push
    ```
 
 4. Access the application:
@@ -59,7 +59,7 @@ dev-stop.bat            # Stop development environment
 
 1. Start with development overrides:
    ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+   docker compose -f docker compose.yml -f docker compose.dev.yml up
    ```
 
 2. Access the application:
@@ -128,33 +128,33 @@ VITE_API_URL=http://localhost/api
 
 ```bash
 # Generate Prisma client
-docker-compose exec backend yarn db:generate
+docker compose exec backend yarn db:generate
 
 # Push schema changes
-docker-compose exec backend yarn db:push
+docker compose exec backend yarn db:push
 
 # Run seeds
-docker-compose exec backend yarn db:seed
+docker compose exec backend yarn db:seed
 ```
 
 ### Import OpenLibrary Data
 
 ```bash
 # Import authors
-docker-compose exec backend yarn import:authors
+docker compose exec backend yarn import:authors
 
 # Import works
-docker-compose exec backend yarn import:works
+docker compose exec backend yarn import:works
 ```
 
 ### Backups
 
 ```bash
 # Database backup
-docker-compose exec mysql mysqldump -u flicklit -p flicklit > backup.sql
+docker compose exec mysql mysqldump -u flicklit -p flicklit > backup.sql
 
 # Restore database
-docker-compose exec -i mysql mysql -u flicklit -p flicklit < backup.sql
+docker compose exec -i mysql mysql -u flicklit -p flicklit < backup.sql
 ```
 
 ## Development
@@ -195,8 +195,8 @@ Development mode supports hot reload for both frontend and backend:
 # Using convenience scripts (recommended)
 ./dev-start.sh
 
-# Manual docker-compose
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Manual docker compose
+docker compose -f docker compose.yml -f docker compose.dev.yml up
 
 # The containers will automatically restart on file changes
 ```
@@ -213,11 +213,11 @@ Backend debugging is available on port 9229 in development mode:
 
 ```bash
 # View all logs
-docker-compose logs -f
+docker compose logs -f
 
 # View specific service logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ## Production Deployment
@@ -236,7 +236,7 @@ docker-compose logs -f frontend
 
 ```bash
 # Scale backend services
-docker-compose up -d --scale backend=3
+docker compose up -d --scale backend=3
 
 # Use external load balancer for multiple replicas
 ```
@@ -268,18 +268,18 @@ All services include health checks:
 3. **Database connection issues**
    ```bash
    # Check MySQL logs
-   docker-compose logs mysql
+   docker compose logs mysql
    
    # Verify database is ready
-   docker-compose exec mysql mysql -u flicklit -p -e "SELECT 1"
+   docker compose exec mysql mysql -u flicklit -p -e "SELECT 1"
    ```
 
 4. **Build failures**
    ```bash
    # Clean rebuild
-   docker-compose down
+   docker compose down
    docker system prune -f
-   docker-compose build --no-cache
+   docker compose build --no-cache
    ```
 
 ### Performance Tuning

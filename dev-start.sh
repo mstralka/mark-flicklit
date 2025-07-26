@@ -79,13 +79,13 @@ setup_environment() {
 # Function to clean up old containers
 cleanup() {
     print_status "Cleaning up old containers..."
-    docker-compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans 2>/dev/null || true
 }
 
 # Function to build images
 build_images() {
     print_status "Building Docker images..."
-    docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --parallel
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml build --parallel
 }
 
 # Function to start services
@@ -98,7 +98,7 @@ start_services() {
         env_file="--env-file .env.docker.local"
     fi
     
-    docker-compose $env_file -f docker-compose.yml -f docker-compose.dev.yml up -d
+    docker compose $env_file -f docker-compose.yml -f docker-compose.dev.yml up -d
 }
 
 # Function to wait for services to be ready
@@ -108,7 +108,7 @@ wait_for_services() {
     # Wait for MySQL
     print_status "Waiting for MySQL..."
     timeout=60
-    while ! docker-compose exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; do
+    while ! docker compose exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; do
         sleep 2
         timeout=$((timeout - 2))
         if [[ $timeout -le 0 ]]; then
@@ -153,10 +153,10 @@ show_status() {
     echo "   ✓ File watching enabled"
     echo
     echo "📋 Useful Commands:"
-    echo "   View logs:            docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f"
-    echo "   Stop services:        docker-compose -f docker-compose.yml -f docker-compose.dev.yml down"
-    echo "   Restart service:      docker-compose -f docker-compose.yml -f docker-compose.dev.yml restart <service>"
-    echo "   Run migrations:       docker-compose exec backend yarn db:push"
+    echo "   View logs:            docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f"
+    echo "   Stop services:        docker compose -f docker-compose.yml -f docker-compose.dev.yml down"
+    echo "   Restart service:      docker compose -f docker-compose.yml -f docker-compose.dev.yml restart <service>"
+    echo "   Run migrations:       docker compose exec backend yarn db:push"
     echo
 }
 
@@ -164,7 +164,7 @@ show_status() {
 cleanup_on_exit() {
     echo
     print_warning "Received interrupt signal. To stop all services, run:"
-    echo "  docker-compose -f docker-compose.yml -f docker-compose.dev.yml down"
+    echo "  docker compose -f docker-compose.yml -f docker-compose.dev.yml down"
     exit 0
 }
 
@@ -202,7 +202,7 @@ main() {
         if [[ "${1:-}" == "--logs" || "${1:-}" == "-l" ]]; then
             echo
             print_status "Following logs (Ctrl+C to stop):"
-            docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+            docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
         else
             echo
             print_status "Run with --logs or -l to follow logs automatically"
@@ -215,7 +215,7 @@ main() {
         fi
     else
         print_error "Failed to start services. Check the logs:"
-        echo "  docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs"
+        echo "  docker compose -f docker-compose.yml -f docker-compose.dev.yml logs"
         exit 1
     fi
 }
