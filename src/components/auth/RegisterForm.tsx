@@ -1,20 +1,18 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router-dom'
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { Link, useNavigate } from 'react-router-dom'
+import { EyeIcon, EyeSlashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { registerSchema, type RegisterInput } from '../../lib/validations/auth'
+import { useAuthStore } from '../../store/authStore'
 
-interface RegisterFormProps {
-  onSubmit: (data: RegisterInput) => Promise<void>
-  loading?: boolean
-}
-
-export function RegisterForm({ onSubmit, loading }: RegisterFormProps) {
+export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const navigate = useNavigate()
+  const { register: registerUser, isLoading, error, clearError, isAuthenticated } = useAuthStore()
   
   const {
     register,
@@ -23,6 +21,22 @@ export function RegisterForm({ onSubmit, loading }: RegisterFormProps) {
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
   })
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
+
+  // Clear error when component unmounts
+  useEffect(() => {
+    return () => clearError()
+  }, [clearError])
+
+  const handleRegister = async (data: RegisterInput) => {
+    await registerUser(data)
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -36,7 +50,22 @@ export function RegisterForm({ onSubmit, loading }: RegisterFormProps) {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        {error && (
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  {error}
+                </h3>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(handleRegister)}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Input
@@ -137,7 +166,7 @@ export function RegisterForm({ onSubmit, loading }: RegisterFormProps) {
               type="submit"
               className="w-full"
               size="lg"
-              loading={loading}
+              loading={isLoading}
             >
               Create account
             </Button>

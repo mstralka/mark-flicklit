@@ -1,19 +1,18 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router-dom'
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { EyeIcon, EyeSlashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { loginSchema, type LoginInput } from '../../lib/validations/auth'
+import { useAuthStore } from '../../store/authStore'
 
-interface LoginFormProps {
-  onSubmit: (data: LoginInput) => Promise<void>
-  loading?: boolean
-}
-
-export function LoginForm({ onSubmit, loading }: LoginFormProps) {
+export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { login, isLoading, error, clearError, isAuthenticated } = useAuthStore()
   
   const {
     register,
@@ -22,6 +21,23 @@ export function LoginForm({ onSubmit, loading }: LoginFormProps) {
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   })
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = (location.state as any)?.from || '/dashboard'
+      navigate(from, { replace: true })
+    }
+  }, [isAuthenticated, navigate, location.state])
+
+  // Clear error when component unmounts
+  useEffect(() => {
+    return () => clearError()
+  }, [clearError])
+
+  const handleLogin = async (data: LoginInput) => {
+    await login(data)
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -35,7 +51,22 @@ export function LoginForm({ onSubmit, loading }: LoginFormProps) {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        {error && (
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  {error}
+                </h3>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(handleLogin)}>
           <div className="space-y-4">
             <Input
               {...register('email')}
@@ -97,7 +128,7 @@ export function LoginForm({ onSubmit, loading }: LoginFormProps) {
               type="submit"
               className="w-full"
               size="lg"
-              loading={loading}
+              loading={isLoading}
             >
               Sign in
             </Button>

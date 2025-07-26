@@ -1,76 +1,70 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { LoginForm } from './components/auth/LoginForm'
 import { RegisterForm } from './components/auth/RegisterForm'
 import { ResetPasswordForm } from './components/auth/ResetPasswordForm'
 import { EmailVerification } from './components/auth/EmailVerification'
-import type { LoginInput, RegisterInput, ResetPasswordInput } from './lib/validations/auth'
+import { ProtectedRoute, PublicRoute } from './components/auth/ProtectedRoute'
+import { Dashboard } from './components/Dashboard'
+import { useAuthStore } from './store/authStore'
 
 function App() {
-  // Mock authentication handlers - you'll implement these with your backend
-  const handleLogin = async (data: LoginInput) => {
-    console.log('Login:', data)
-    // TODO: Implement login logic
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-  }
+  const { initialize } = useAuthStore()
 
-  const handleRegister = async (data: RegisterInput) => {
-    console.log('Register:', data)
-    // TODO: Implement registration logic
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-  }
-
-  const handleResetPassword = async (data: ResetPasswordInput) => {
-    console.log('Reset password:', data)
-    // TODO: Implement password reset logic
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-  }
-
-  const handleResendEmail = async () => {
-    console.log('Resend email verification')
-    // TODO: Implement resend email logic
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-  }
+  useEffect(() => {
+    // Initialize authentication state on app load
+    initialize()
+  }, [initialize])
 
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
         <Routes>
-          <Route path="/" element={<Navigate to="/auth/login" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* Public routes - redirect to dashboard if authenticated */}
           <Route 
             path="/auth/login" 
-            element={<LoginForm onSubmit={handleLogin} />} 
-          />
-          <Route 
-            path="/auth/register" 
-            element={<RegisterForm onSubmit={handleRegister} />} 
-          />
-          <Route 
-            path="/auth/reset-password" 
-            element={<ResetPasswordForm onSubmit={handleResetPassword} />} 
-          />
-          <Route 
-            path="/auth/verify-email" 
             element={
-              <EmailVerification 
-                email="user@example.com" 
-                onResendEmail={handleResendEmail}
-              />
+              <PublicRoute>
+                <LoginForm />
+              </PublicRoute>
             } 
           />
           <Route 
+            path="/auth/register" 
+            element={
+              <PublicRoute>
+                <RegisterForm />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/auth/reset-password" 
+            element={
+              <PublicRoute>
+                <ResetPasswordForm />
+              </PublicRoute>
+            } 
+          />
+          
+          {/* Email verification - requires authentication but not email verification */}
+          <Route 
+            path="/auth/verify-email" 
+            element={
+              <ProtectedRoute requireEmailVerification={false}>
+                <EmailVerification />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Protected routes - require authentication and email verification */}
+          <Route 
             path="/dashboard" 
             element={
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                    Welcome to FlickLit! 📚
-                  </h1>
-                  <p className="text-lg text-gray-600">
-                    Your personalized book recommendation experience
-                  </p>
-                </div>
-              </div>
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
             } 
           />
         </Routes>
