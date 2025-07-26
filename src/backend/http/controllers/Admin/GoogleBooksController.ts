@@ -150,9 +150,10 @@ export class GoogleBooksController extends BaseController {
       const hasNext = pageNum < totalPages
       const hasPrev = pageNum > 1
 
-      return res.json({
-        data: books,
-        pagination: {
+      return this.successWithPagination(
+        res,
+        books,
+        {
           page: pageNum,
           limit: limitNum,
           total,
@@ -160,7 +161,7 @@ export class GoogleBooksController extends BaseController {
           hasNext,
           hasPrev
         }
-      })
+      )
 
     } catch (error) {
       console.error('Error fetching Google Books:', error)
@@ -221,7 +222,7 @@ export class GoogleBooksController extends BaseController {
         `
       ])
 
-      return res.json({
+      return this.success(res, {
         totalBooks,
         recentBooks,
         averageRating: ratingStats._avg.averageRating,
@@ -314,7 +315,7 @@ export class GoogleBooksController extends BaseController {
         `
       ])
 
-      return res.json({
+      return this.success(res, {
         languages: languages.map(lang => ({
           value: lang.language,
           label: lang.language?.toUpperCase() || 'Unknown',
