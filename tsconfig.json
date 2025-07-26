@@ -26,18 +26,21 @@
       ]
     },
     "types": [
-      "node"
+      "node",
+      "vite/client"
     ]
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "src/frontend/vite-env.d.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.d.ts",
+    "!src/frontend/vite-env.d.ts",
     "prisma/**/*.ts"
   ],
   "references": [

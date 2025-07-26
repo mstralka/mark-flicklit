@@ -7,15 +7,17 @@ export default defineConfig({
     plugins: [react()],
     resolve: {
         alias: {
-            '@': resolve(__dirname, 'src'),
+            '@': resolve(__dirname, 'src/frontend'),
         },
     },
+    root: '.',
+    envDir: '.',
     server: {
-        port: 3000,
+        port: 5173,
         open: true,
     },
     build: {
-        outDir: 'dist',
+        outDir: 'dist/frontend',
         sourcemap: true,
     },
 })

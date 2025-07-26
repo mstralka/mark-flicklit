@@ -1,0 +1,215 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+model Author {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // OpenLibrary fields
+  openLibraryId  String?  @unique
+  name           String
+  personalName   String?
+  birthDate      String?
+  deathDate      String?
+  bio            String?
+  alternateNames String? // JSON array stored as text
+  location       String?
+  easternOrder   Boolean? @default(false)
+  wikipedia      String?
+  links          String? // JSON array stored as text
+
+  // Relations
+  works AuthorWork[]
+
+  // Indexes for recommendation engine performance
+  @@index([name], name: "idx_authors_name")
+  @@index([birthDate], name: "idx_authors_birth_date")
+  @@map("authors")
+}
+
+model Work {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // OpenLibrary fields
+  openLibraryId     String? @unique
+  title             String
+  subtitle          String?
+  description       String?
+  firstPublishDate  String?
+  firstSentence     String?
+  subjects          String? // JSON array stored as text
+  subjectPlaces     String? // JSON array stored as text
+  subjectTimes      String? // JSON array stored as text
+  subjectPeople     String? // JSON array stored as text
+  originalLanguages String? // JSON array stored as text
+  otherTitles       String? // JSON array stored as text
+
+  // Relations
+  authors              AuthorWork[]
+  userInteractions     UserInteraction[]
+  recommendationScores RecommendationScore[]
+  sourceWorkSimilarities WorkSimilarity[] @relation("SourceWorkSimilarity")
+  targetWorkSimilarities WorkSimilarity[] @relation("TargetWorkSimilarity")
+
+  // Indexes for recommendation engine performance
+  @@index([firstPublishDate], name: "idx_works_publish_date")
+  @@index([createdAt(sort: Desc)], name: "idx_works_created_at")
+  @@map("works")
+}
+
+model AuthorWork {
+  id       Int     @id @default(autoincrement())
+  authorId Int
+  workId   Int
+  role     String? // e.g., "author", "editor", "translator"
+
+  author Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  work   Work   @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, workId])
+  // Indexes for recommendation engine performance
+  @@index([authorId], name: "idx_author_work_author_id")
+  @@index([workId], name: "idx_author_work_work_id")
+  @@map("author_work")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Authentication fields
+  firstName     String
+  lastName      String
+  email         String   @unique
+  password      String   // Hashed password
+  status        UserStatus @default(Active)
+  emailVerified Boolean  @default(false)
+  
+  // Relations
+  interactions        UserInteraction[]
+  profile             UserProfile?
+  recommendationScores RecommendationScore[]
+  
+  // Indexes
+  @@index([email], name: "idx_users_email")
+  @@index([status], name: "idx_users_status")
+  @@map("users")
+}
+
+enum UserStatus {
+  Active
+  Inactive
+}
+
+model UserProfile {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Preference weights (0-1 scale) stored as JSON strings
+  subjectPreferences  String? // JSON: Record<string, number>
+  placePreferences    String? // JSON: Record<string, number>
+  timePreferences     String? // JSON: Record<string, number>
+  peoplePreferences   String? // JSON: Record<string, number>
+  languagePreferences String? // JSON: Record<string, number>
+  
+  // Temporal preferences
+  preferredPublishEra String?
+  
+  // Negative preferences stored as JSON strings
+  dislikedSubjects String? // JSON: Record<string, number>
+  dislikedPlaces   String? // JSON: Record<string, number>
+  dislikedAuthors  String? // JSON: Record<string, number>
+  
+  // Interaction stats
+  totalLikes        Int      @default(0)
+  totalDislikes     Int      @default(0)
+  lastInteractionAt DateTime?
+  
+  @@map("user_profiles")
+}
+
+model UserInteraction {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  workId Int
+  userId Int
+  liked  Boolean // true for swipe right (like), false for swipe left (dislike)
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes for recommendation engine performance
+  @@index([userId, liked], name: "idx_user_interactions_user_liked")
+  @@index([workId, liked], name: "idx_user_interactions_work_liked")
+  @@index([createdAt(sort: Desc)], name: "idx_user_interactions_created_at")
+  @@index([userId, workId], name: "idx_user_interactions_user_work")
+  @@index([workId, userId], name: "idx_user_interactions_work_user")
+  @@index([workId, liked, userId], name: "idx_user_interactions_work_liked_user")
+  @@index([userId, liked, createdAt(sort: Desc)], name: "idx_user_interactions_user_liked_created")
+  @@map("user_interactions")
+}
+
+model RecommendationScore {
+  id                   Int      @id @default(autoincrement())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  userId               Int
+  workId               Int
+  contentScore         Float
+  collaborativeScore   Float
+  noveltyBonus         Float
+  negativeMultiplier   Float
+  finalScore           Float
+  reasons              String   // JSON array of strings
+  
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  work                 Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  
+  // Indexes for recommendation queries
+  @@index([userId, finalScore(sort: Desc)], name: "idx_recommendation_scores_user_score")
+  @@index([workId, finalScore(sort: Desc)], name: "idx_recommendation_scores_work_score")
+  @@index([createdAt(sort: Desc)], name: "idx_recommendation_scores_created_at")
+  @@unique([userId, workId], name: "unique_user_work_recommendation")
+  @@map("recommendation_scores")
+}
+
+model WorkSimilarity {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  sourceWorkId   Int
+  targetWorkId   Int
+  similarity     Float
+  similarityType String // "content", "collaborative", "nlp", etc.
+  
+  sourceWork Work @relation("SourceWorkSimilarity", fields: [sourceWorkId], references: [id], onDelete: Cascade)
+  targetWork Work @relation("TargetWorkSimilarity", fields: [targetWorkId], references: [id], onDelete: Cascade)
+  
+  // Indexes for similarity queries
+  @@index([sourceWorkId, similarity(sort: Desc)], name: "idx_work_similarity_source_score")
+  @@index([targetWorkId, similarity(sort: Desc)], name: "idx_work_similarity_target_score")
+  @@index([similarityType], name: "idx_work_similarity_type")
+  @@unique([sourceWorkId, targetWorkId, similarityType], name: "unique_work_similarity")
+  @@map("work_similarities")
+}
