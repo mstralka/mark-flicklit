@@ -66,6 +66,8 @@ model Work {
   recommendationScores RecommendationScore[]
   sourceWorkSimilarities WorkSimilarity[] @relation("SourceWorkSimilarity")
   targetWorkSimilarities WorkSimilarity[] @relation("TargetWorkSimilarity")
+  worldcatBooks        WorldCatBook[]
+  googleBooks          GoogleBook[]
 
   // Indexes for recommendation engine performance
   @@index([firstPublishDate], name: "idx_works_publish_date")
@@ -251,4 +253,175 @@ model Cover {
   @@index([isbn10], name: "idx_covers_isbn10")
   @@index([isbn13], name: "idx_covers_isbn13")
   @@map("covers")
+}
+
+model WorldCatBook {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // WorldCat identifiers
+  oclcNumber     String  @unique // OCLC Control Number (primary identifier)
+  worldcatId     String? @unique // WorldCat URL ID if different
+  
+  // Basic bibliographic info
+  title          String
+  subtitle       String?
+  author         String? // Primary author name
+  authors        String[] // All authors as array
+  
+  // Publication details
+  publisher      String?
+  publicationYear Int?
+  publicationPlace String?
+  edition        String?
+  
+  // Physical description
+  pages          Int?
+  format         String? // Book, eBook, Audiobook, etc.
+  physicalDescription String?
+  
+  // Language and subjects
+  language       String? // ISO 639-2 language code (eng, fre, etc.)
+  languageName   String? // Full language name
+  subjects       String[] // Library of Congress subject headings
+  genres         String[] // Literary genres
+  
+  // Identifiers
+  isbn10         String[]
+  isbn13         String[]
+  lccn           String? // Library of Congress Control Number
+  deweyDecimal   String? // Dewey Decimal Classification
+  
+  // Additional metadata
+  summary        String? // Book description/summary
+  tableOfContents String? // Table of contents
+  notes          String[] // Cataloging notes
+  
+  // WorldCat specific
+  worldcatUrl    String? // Full WorldCat URL
+  marcRecord     Json? // Raw MARC data if available
+  
+  // Relations to other models
+  workId         Int? // Link to our Work model if matched
+  work           Work? @relation(fields: [workId], references: [id], onDelete: SetNull)
+  
+  // Indexes for efficient querying
+  @@index([oclcNumber], name: "idx_worldcat_oclc")
+  @@index([title], name: "idx_worldcat_title")
+  @@index([author], name: "idx_worldcat_author")
+  @@index([isbn10], name: "idx_worldcat_isbn10", type: Gin)
+  @@index([isbn13], name: "idx_worldcat_isbn13", type: Gin)
+  @@index([language], name: "idx_worldcat_language")
+  @@index([subjects], name: "idx_worldcat_subjects", type: Gin)
+  @@index([publicationYear], name: "idx_worldcat_year")
+  @@map("worldcat_books")
+}
+
+model GoogleBook {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Google Books identifiers
+  googleBooksId String  @unique // Google Books volume ID
+  selfLink      String? // API self link
+  
+  // Basic bibliographic info
+  title         String
+  subtitle      String?
+  authors       String[] // Author names
+  publisher     String?
+  publishedDate String? // Can be year, year-month, or full date
+  
+  // Physical info
+  pageCount     Int?
+  printType     String? // BOOK, MAGAZINE
+  
+  // Content info
+  description   String? // Book description
+  language      String? // ISO 639-1 language code (en, fr, es)
+  categories    String[] // Book categories/genres
+  maturityRating String? // NOT_MATURE, MATURE
+  
+  // Identifiers
+  isbn10        String[]
+  isbn13        String[]
+  industryIdentifiers Json? // All identifiers as JSON
+  
+  // Images
+  smallThumbnail String? // Small thumbnail URL
+  thumbnail     String? // Standard thumbnail URL
+  small         String? // Small image URL
+  medium        String? // Medium image URL
+  large         String? // Large image URL
+  extraLarge    String? // Extra large image URL
+  
+  // Access info
+  viewability   String? // PARTIAL, ALL_PAGES, NO_PAGES
+  embeddable    Boolean?
+  publicDomain  Boolean?
+  textToSpeechPermission String?
+  
+  // Sales info
+  saleability   String? // FOR_SALE, NOT_FOR_SALE, etc.
+  listPrice     Json? // Price information
+  
+  // Rating info
+  averageRating Float? // 1.0 to 5.0
+  ratingsCount  Int?
+  
+  // Additional metadata
+  previewLink   String? // Google Books preview URL
+  infoLink      String? // Google Books info URL
+  canonicalVolumeLink String?
+  
+  // Raw data
+  rawResponse   Json? // Full API response for debugging
+  
+  // Relations to other models
+  workId        Int? // Link to our Work model if matched
+  work          Work? @relation(fields: [workId], references: [id], onDelete: SetNull)
+  
+  // Indexes for efficient querying
+  @@index([googleBooksId], name: "idx_google_books_id")
+  @@index([title], name: "idx_google_books_title")
+  @@index([authors], name: "idx_google_books_authors", type: Gin)
+  @@index([isbn10], name: "idx_google_books_isbn10", type: Gin)
+  @@index([isbn13], name: "idx_google_books_isbn13", type: Gin)
+  @@index([language], name: "idx_google_books_language")
+  @@index([categories], name: "idx_google_books_categories", type: Gin)
+  @@index([publishedDate], name: "idx_google_books_published")
+  @@map("google_books")
+}
+
+model GoogleBookImportProgress {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Import session tracking
+  sessionId   String   // Unique identifier for this import run
+  importMode  String   // 'standard', 'comprehensive', 'enumerate'
+  
+  // Strategy/phase tracking
+  strategyName String  // Name of current strategy/phase
+  currentQuery String? // Current query being processed
+  currentIndex Int     @default(0) // Current position in strategy
+  
+  // Progress metrics
+  totalItems   Int     @default(0) // Total items in this strategy
+  completed    Boolean @default(false)
+  imported     Int     @default(0)
+  skipped      Int     @default(0)
+  errors       Int     @default(0)
+  
+  // Metadata
+  lastBookId   String? // Last successfully processed book ID
+  metadata     Json?   // Additional strategy-specific data
+  
+  @@unique([sessionId, strategyName])
+  @@index([sessionId, completed])
+  @@index([importMode, completed])
+  @@map("google_book_import_progress")
 }

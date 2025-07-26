@@ -31,6 +31,8 @@
     "import:covers": "tsx scripts/download-covers.ts",
     "import:covers:skip-download": "tsx scripts/download-covers.ts --skip-download",
     "import:covers:force": "tsx scripts/download-covers.ts --force-download",
+    "import:worldcat": "tsx scripts/import-worldcat-books.ts",
+    "import:google-books": "tsx scripts/import-google-books.ts",
     "test:recommendations": "cd src/backend && tsx ../test-recommendations.ts",
     "test:collaborative": "cd src/backend && tsx ../test-collaborative.ts"
   },
