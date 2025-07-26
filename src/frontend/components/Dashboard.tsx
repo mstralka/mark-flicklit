@@ -1,5 +1,7 @@
 import { useAuthStore } from '../store/authStore'
 import { Button } from './ui/Button'
+import { Link } from 'react-router-dom'
+import { Cog6ToothIcon } from '@heroicons/react/24/outline'
 
 export function Dashboard() {
   const { user, logout } = useAuthStore()
@@ -34,13 +36,24 @@ export function Dashboard() {
               ({user.totalLikes} likes, {user.totalDislikes} dislikes)
             </p>
             
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className="mr-4"
-            >
-              Sign Out
-            </Button>
+            <div className="flex gap-4">
+              <Link to="/admin">
+                <Button
+                  variant="primary"
+                  className="inline-flex items-center gap-2"
+                >
+                  <Cog6ToothIcon className="h-4 w-4" />
+                  Admin Panel
+                </Button>
+              </Link>
+              
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+              >
+                Sign Out
+              </Button>
+            </div>
           </div>
         )}
         

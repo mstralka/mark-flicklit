@@ -33,6 +33,7 @@ services:
       - /app/node_modules  # Anonymous volume to preserve node_modules
     environment:
       VITE_API_URL: http://localhost:3001
+      VITE_PROXY_TARGET: http://backend:3001
     command: ["yarn", "dev:frontend"]
     ports:
       - "5173:5173"

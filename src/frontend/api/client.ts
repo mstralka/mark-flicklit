@@ -126,6 +126,11 @@ class ApiClient {
     })
   }
 
+  // Generic GET method
+  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: 'GET' })
+  }
+
   // Health check
   async healthCheck(): Promise<ApiResponse> {
     return this.request('/health')

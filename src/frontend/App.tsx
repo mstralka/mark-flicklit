@@ -13,6 +13,11 @@ const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ defau
 const TermsOfService = lazy(() => import('./pages/TermsOfService'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 
+// Admin components
+const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
+const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'))
+const AuthorsPage = lazy(() => import('./pages/admin/AuthorsPage'))
+
 function App() {
   const { initialize } = useAuthStore()
 
@@ -70,6 +75,28 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Admin routes - require authentication and email verification */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <DashboardPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/authors" 
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <AuthorsPage />
+                  </AdminLayout>
                 </ProtectedRoute>
               } 
             />

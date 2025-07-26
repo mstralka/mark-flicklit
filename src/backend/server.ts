@@ -4,6 +4,7 @@ import morgan from 'morgan'
 import dotenv from 'dotenv'
 import path from 'path'
 import { authRoutes } from './routes/auth'
+import adminRoutes from './routes/admin'
 
 // Load environment variables from project root
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -39,6 +40,7 @@ app.get('/health', (_req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes)
+app.use('/api/admin', adminRoutes)
 
 // Error handling middleware
 app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -67,6 +69,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Backend server running on port ${PORT}`)
   console.log(`📊 Health check: http://localhost:${PORT}/health`)
   console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`)
+  console.log(`⚙️  Admin API: http://localhost:${PORT}/api/admin`)
 })
 
 export default app
