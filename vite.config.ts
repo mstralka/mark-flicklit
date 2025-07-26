@@ -1,15 +1,9 @@
-import {defineConfig, loadEnv} from 'vite'
+import {defineConfig} from 'vite'
 import react from '@vitejs/plugin-react'
 import {resolve} from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
-  const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:3001'
-  
-  console.log('Vite proxy target:', proxyTarget)
-  
-  return {
+export default defineConfig({
     plugins: [react()],
     resolve: {
         alias: {
@@ -24,7 +18,7 @@ export default defineConfig(({ mode }) => {
         open: false, // Don't try to open browser in container
         proxy: {
             '/api': {
-                target: proxyTarget,
+                target: 'http://backend:3001',
                 changeOrigin: true,
                 secure: false,
             },
@@ -57,5 +51,4 @@ export default defineConfig(({ mode }) => {
         // Increase chunk size warning limit since we're now splitting properly
         chunkSizeWarningLimit: 600,
     },
-  }
 })
