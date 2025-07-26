@@ -89,14 +89,14 @@ dev-stop.bat            # Stop development environment
 - **Data**: Persisted in `valkey_data` volume
 
 ### backend
-- **Base**: node:20-ubuntu
+- **Base**: node:22 (Debian)
 - **Purpose**: Express.js API server
 - **Port**: 3001
 - **Build**: Multi-stage with production optimization
 - **Health**: `/health` endpoint
 
 ### frontend  
-- **Base**: node:20-ubuntu (build), nginx:1.29 (serve)
+- **Base**: node:22 (Debian, build), nginx:1.29 (serve)
 - **Purpose**: React SPA
 - **Port**: 80 (internal)
 - **Build**: Vite production build served by nginx

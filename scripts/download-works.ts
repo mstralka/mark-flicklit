@@ -11,7 +11,7 @@ dotenv.config()
 
 const DUMP_URL = 'https://openlibrary.org/data/ol_dump_works_latest.txt.gz'
 const DUMP_FILE = './data/ol_dump_works_latest.txt.gz'
-const BATCH_SIZE = 1000
+const BATCH_SIZE = 5000
 
 // Parse command line arguments
 const args = process.argv.slice(2)
@@ -127,8 +127,40 @@ interface WorkAuthorRelation {
   role?: string
 }
 
-async function processWorksFile(filePath: string): Promise<void> {
-  const prisma = new PrismaClient()
+async function countWorksInFile(filePath: string): Promise<number> {
+  console.log('Counting works in file...')
+  let count = 0
+  
+  const fileStream = createReadStream(filePath)
+  const gunzip = createGunzip()
+  const rl = readline.createInterface({
+    input: fileStream.pipe(gunzip),
+    crlfDelay: Infinity
+  })
+
+  for await (const line of rl) {
+    const columns = line.split('\t')
+    if (columns.length >= 5 && columns[0] === '/type/work') {
+      count++
+      
+      if (count % 100000 === 0) {
+        process.stdout.write(`\rCounting: ${count.toLocaleString()} works found...`)
+      }
+    }
+  }
+  
+  process.stdout.write(`\rTotal works found: ${count.toLocaleString()}\n`)
+  return count
+}
+
+async function processWorksFile(filePath: string, totalCount: number): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL + '?connection_limit=20&pool_timeout=60&connect_timeout=30'
+      }
+    }
+  })
   let processedCount = 0
   let skippedCount = 0
   let authorRelationsCount = 0
@@ -137,6 +169,22 @@ async function processWorksFile(filePath: string): Promise<void> {
 
   try {
     console.log('Processing works file...')
+    
+    // Drop indexes for faster bulk inserts
+    console.log('Dropping indexes for faster import...')
+    try {
+      await prisma.$executeRaw`DROP INDEX idx_works_publish_date ON works`
+      console.log('Dropped idx_works_publish_date')
+    } catch (error) {
+      console.log('Index idx_works_publish_date not found, continuing...')
+    }
+    
+    try {
+      await prisma.$executeRaw`DROP INDEX idx_works_created_at ON works`
+      console.log('Dropped idx_works_created_at')
+    } catch (error) {
+      console.log('Index idx_works_created_at not found, continuing...')
+    }
     
     // Create read stream with gunzip
     const fileStream = createReadStream(filePath)
@@ -204,8 +252,9 @@ async function processWorksFile(filePath: string): Promise<void> {
           processedCount += batch.length
           batch = []
           
-          if (processedCount % 10000 === 0) {
-            console.log(`Processed ${processedCount} works, ${authorRelationsCount} author relations, skipped ${skippedCount}...`)
+          if (processedCount % 25000 === 0) {
+            const progress = totalCount > 0 ? ((processedCount / totalCount) * 100).toFixed(1) : '0.0'
+            console.log(`Processed ${processedCount.toLocaleString()} / ${totalCount.toLocaleString()} works (${progress}%), ${authorRelationsCount.toLocaleString()} author relations, skipped ${skippedCount.toLocaleString()}...`)
           }
         }
 
@@ -220,18 +269,48 @@ async function processWorksFile(filePath: string): Promise<void> {
       processedCount += batch.length
     }
 
-    console.log(`Successfully processed ${processedCount} works`)
-    console.log(`Found ${authorRelationsCount} author relations`)
-    console.log(`Skipped ${skippedCount} works without titles`)
+    const finalProgress = totalCount > 0 ? ((processedCount / totalCount) * 100).toFixed(1) : '100.0'
+    console.log(`Successfully processed ${processedCount.toLocaleString()} / ${totalCount.toLocaleString()} works (${finalProgress}%)`)
+    console.log(`Found ${authorRelationsCount.toLocaleString()} author relations`)
+    console.log(`Skipped ${skippedCount.toLocaleString()} works without titles`)
 
     // Now process author relations
     if (authorRelations.length > 0) {
       console.log('Processing author-work relationships...')
       await processAuthorRelations(prisma, authorRelations)
     }
+    
+    // Recreate indexes after import
+    console.log('Recreating indexes...')
+    try {
+      await prisma.$executeRaw`CREATE INDEX idx_works_publish_date ON works (firstPublishDate)`
+      console.log('Recreated idx_works_publish_date')
+    } catch (error) {
+      console.warn('Error recreating idx_works_publish_date:', error)
+    }
+    
+    try {
+      await prisma.$executeRaw`CREATE INDEX idx_works_created_at ON works (createdAt DESC)`
+      console.log('Recreated idx_works_created_at')
+    } catch (error) {
+      console.warn('Error recreating idx_works_created_at:', error)
+    }
+    
+    console.log('Index recreation completed')
 
   } catch (error) {
     console.error('Error processing file:', error)
+    
+    // Try to recreate indexes even if import failed
+    console.log('Attempting to recreate indexes after error...')
+    try {
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_works_publish_date ON works (firstPublishDate)`
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_works_created_at ON works (createdAt DESC)`
+      console.log('Indexes recreated after error')
+    } catch (indexError) {
+      console.warn('Could not recreate indexes after error:', indexError)
+    }
+    
     throw error
   } finally {
     await prisma.$disconnect()
@@ -239,38 +318,35 @@ async function processWorksFile(filePath: string): Promise<void> {
 }
 
 async function processBatch(prisma: PrismaClient, batch: any[]): Promise<void> {
-  // Wrap batch in transaction for better performance
   try {
-    await prisma.$transaction(async (tx: any) => {
-      for (const work of batch) {
-        await tx.work.upsert({
-          where: { openLibraryId: work.openLibraryId },
-          update: work,
-          create: work,
-        })
-      }
+    // Use createMany for bulk insert with skipDuplicates for better performance
+    await prisma.work.createMany({
+      data: batch,
+      skipDuplicates: true,
     })
   } catch (error) {
-    console.warn(`Error processing batch: ${error}`)
-    // Fallback to individual upserts if batch fails
-    for (const work of batch) {
-      try {
-        await prisma.work.upsert({
-          where: { openLibraryId: work.openLibraryId },
-          update: work,
-          create: work,
-        })
-      } catch (individualError) {
-        console.warn(`Error inserting work ${work.openLibraryId}: ${individualError}`)
+    console.warn(`Error with bulk insert: ${error}`)
+    // Fallback to individual upserts if bulk insert fails
+    await prisma.$transaction(async (tx: any) => {
+      for (const work of batch) {
+        try {
+          await tx.work.upsert({
+            where: { openLibraryId: work.openLibraryId },
+            update: work,
+            create: work,
+          })
+        } catch (individualError) {
+          console.warn(`Error inserting work ${work.openLibraryId}: ${individualError}`)
+        }
       }
-    }
+    })
   }
 }
 
 async function processAuthorRelations(prisma: PrismaClient, relations: WorkAuthorRelation[]): Promise<void> {
   let processedRelations = 0
   let skippedRelations = 0
-  const RELATION_BATCH_SIZE = 500
+  const RELATION_BATCH_SIZE = 2000
 
   // Process relations in batches for better performance
   for (let i = 0; i < relations.length; i += RELATION_BATCH_SIZE) {
@@ -418,8 +494,11 @@ async function main() {
       process.exit(1)
     }
     
+    // Count works in file first
+    const totalWorks = await countWorksInFile(DUMP_FILE)
+    
     // Process the file
-    await processWorksFile(DUMP_FILE)
+    await processWorksFile(DUMP_FILE, totalWorks)
     
     console.log('Import completed successfully!')
     

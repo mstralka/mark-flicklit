@@ -2,13 +2,14 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/client"
+  provider      = "prisma-client-js"
+  output        = "../generated/client"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
 }
 
 model Author {
@@ -18,22 +19,22 @@ model Author {
 
   // OpenLibrary fields
   openLibraryId  String?  @unique
-  name           String
-  personalName   String?
+  name           String @db.VarChar(1024)
+  personalName   String? @db.Text
   birthDate      String?
   deathDate      String?
-  bio            String?
-  alternateNames String? // JSON array stored as text
+  bio            String? @db.Text
+  alternateNames String? @db.Text // JSON array stored as text
   location       String?
   easternOrder   Boolean? @default(false)
   wikipedia      String?
-  links          String? // JSON array stored as text
+  links          String? @db.Text // JSON array stored as text
 
   // Relations
   works AuthorWork[]
 
   // Indexes for recommendation engine performance
-  @@index([name], name: "idx_authors_name")
+  @@index([name(length: 768)], name: "idx_authors_name")
   @@index([birthDate], name: "idx_authors_birth_date")
   @@map("authors")
 }
@@ -45,17 +46,17 @@ model Work {
 
   // OpenLibrary fields
   openLibraryId     String? @unique
-  title             String
-  subtitle          String?
-  description       String?
+  title             String @db.Text
+  subtitle          String? @db.Text
+  description       String? @db.Text
   firstPublishDate  String?
-  firstSentence     String?
-  subjects          String? // JSON array stored as text
-  subjectPlaces     String? // JSON array stored as text
-  subjectTimes      String? // JSON array stored as text
-  subjectPeople     String? // JSON array stored as text
-  originalLanguages String? // JSON array stored as text
-  otherTitles       String? // JSON array stored as text
+  firstSentence     String? @db.Text
+  subjects          String? @db.Text // JSON array stored as text
+  subjectPlaces     String? @db.Text // JSON array stored as text
+  subjectTimes      String? @db.Text // JSON array stored as text
+  subjectPeople     String? @db.Text // JSON array stored as text
+  originalLanguages String? @db.Text // JSON array stored as text
+  otherTitles       String? @db.Text // JSON array stored as text
 
   // Relations
   authors              AuthorWork[]
@@ -124,19 +125,19 @@ model UserProfile {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   // Preference weights (0-1 scale) stored as JSON strings
-  subjectPreferences  String? // JSON: Record<string, number>
-  placePreferences    String? // JSON: Record<string, number>
-  timePreferences     String? // JSON: Record<string, number>
-  peoplePreferences   String? // JSON: Record<string, number>
-  languagePreferences String? // JSON: Record<string, number>
+  subjectPreferences  String? @db.Text // JSON: Record<string, number>
+  placePreferences    String? @db.Text // JSON: Record<string, number>
+  timePreferences     String? @db.Text // JSON: Record<string, number>
+  peoplePreferences   String? @db.Text // JSON: Record<string, number>
+  languagePreferences String? @db.Text // JSON: Record<string, number>
   
   // Temporal preferences
   preferredPublishEra String?
   
   // Negative preferences stored as JSON strings
-  dislikedSubjects String? // JSON: Record<string, number>
-  dislikedPlaces   String? // JSON: Record<string, number>
-  dislikedAuthors  String? // JSON: Record<string, number>
+  dislikedSubjects String? @db.Text // JSON: Record<string, number>
+  dislikedPlaces   String? @db.Text // JSON: Record<string, number>
+  dislikedAuthors  String? @db.Text // JSON: Record<string, number>
   
   // Interaction stats
   totalLikes        Int      @default(0)
@@ -180,7 +181,7 @@ model RecommendationScore {
   noveltyBonus         Float
   negativeMultiplier   Float
   finalScore           Float
-  reasons              String   // JSON array of strings
+  reasons              String @db.Text // JSON array of strings
   
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   work                 Work     @relation(fields: [workId], references: [id], onDelete: Cascade)

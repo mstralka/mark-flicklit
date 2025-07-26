@@ -11,7 +11,7 @@ dotenv.config()
 
 const DUMP_URL = 'https://openlibrary.org/data/ol_dump_authors_latest.txt.gz'
 const DUMP_FILE = './data/ol_dump_authors_latest.txt.gz'
-const BATCH_SIZE = 1000
+const BATCH_SIZE = 5000
 
 // Parse command line arguments
 const args = process.argv.slice(2)
@@ -116,13 +116,61 @@ function processLinks(links: Array<{ title?: string; url: string; type?: { key: 
   return links.map(link => link.url).filter(Boolean)
 }
 
-async function processAuthorsFile(filePath: string): Promise<void> {
-  const prisma = new PrismaClient()
+async function countAuthorsInFile(filePath: string): Promise<number> {
+  console.log('Counting authors in file...')
+  let count = 0
+  
+  const fileStream = createReadStream(filePath)
+  const gunzip = createGunzip()
+  const rl = readline.createInterface({
+    input: fileStream.pipe(gunzip),
+    crlfDelay: Infinity
+  })
+
+  for await (const line of rl) {
+    const columns = line.split('\t')
+    if (columns.length >= 5 && columns[0] === '/type/author') {
+      count++
+      
+      if (count % 50000 === 0) {
+        process.stdout.write(`\rCounting: ${count.toLocaleString()} authors found...`)
+      }
+    }
+  }
+  
+  process.stdout.write(`\rTotal authors found: ${count.toLocaleString()}\n`)
+  return count
+}
+
+async function processAuthorsFile(filePath: string, totalCount: number): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL + '?connection_limit=20&pool_timeout=60&connect_timeout=30'
+      }
+    }
+  })
   let processedCount = 0
   let batch: any[] = []
 
   try {
     console.log('Processing authors file...')
+    
+    // Drop indexes for faster bulk inserts
+    console.log('Dropping indexes for faster import...')
+    try {
+      await prisma.$executeRaw`DROP INDEX idx_authors_name ON authors`
+      console.log('Dropped idx_authors_name')
+    } catch (error) {
+      console.log('Index idx_authors_name not found, continuing...')
+    }
+    
+    try {
+      await prisma.$executeRaw`DROP INDEX idx_authors_birth_date ON authors`
+      console.log('Dropped idx_authors_birth_date')
+    } catch (error) {
+      console.log('Index idx_authors_birth_date not found, continuing...')
+    }
     
     // Create read stream with gunzip
     const fileStream = createReadStream(filePath)
@@ -172,8 +220,9 @@ async function processAuthorsFile(filePath: string): Promise<void> {
           processedCount += batch.length
           batch = []
           
-          if (processedCount % 10000 === 0) {
-            console.log(`Processed ${processedCount} authors...`)
+          if (processedCount % 25000 === 0) {
+            const progress = totalCount > 0 ? ((processedCount / totalCount) * 100).toFixed(1) : '0.0'
+            console.log(`Processed ${processedCount.toLocaleString()} / ${totalCount.toLocaleString()} authors (${progress}%)...`)
           }
         }
 
@@ -188,10 +237,40 @@ async function processAuthorsFile(filePath: string): Promise<void> {
       processedCount += batch.length
     }
 
-    console.log(`Successfully processed ${processedCount} authors`)
+    const finalProgress = totalCount > 0 ? ((processedCount / totalCount) * 100).toFixed(1) : '100.0'
+    console.log(`Successfully processed ${processedCount.toLocaleString()} / ${totalCount.toLocaleString()} authors (${finalProgress}%)`)
+    
+    // Recreate indexes after import
+    console.log('Recreating indexes...')
+    try {
+      await prisma.$executeRaw`CREATE INDEX idx_authors_name ON authors (name(768))`
+      console.log('Recreated idx_authors_name')
+    } catch (error) {
+      console.warn('Error recreating idx_authors_name:', error)
+    }
+    
+    try {
+      await prisma.$executeRaw`CREATE INDEX idx_authors_birth_date ON authors (birthDate)`
+      console.log('Recreated idx_authors_birth_date')
+    } catch (error) {
+      console.warn('Error recreating idx_authors_birth_date:', error)
+    }
+    
+    console.log('Index recreation completed')
 
   } catch (error) {
     console.error('Error processing file:', error)
+    
+    // Try to recreate indexes even if import failed
+    console.log('Attempting to recreate indexes after error...')
+    try {
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_authors_name ON authors (name(768))`
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_authors_birth_date ON authors (birthDate)`
+      console.log('Indexes recreated after error')
+    } catch (indexError) {
+      console.warn('Could not recreate indexes after error:', indexError)
+    }
+    
     throw error
   } finally {
     await prisma.$disconnect()
@@ -199,31 +278,28 @@ async function processAuthorsFile(filePath: string): Promise<void> {
 }
 
 async function processBatch(prisma: PrismaClient, batch: any[]): Promise<void> {
-  // Wrap batch in transaction for better performance
   try {
-    await prisma.$transaction(async (tx: any) => {
-      for (const author of batch) {
-        await tx.author.upsert({
-          where: { openLibraryId: author.openLibraryId },
-          update: author,
-          create: author,
-        })
-      }
+    // Use createMany for bulk insert with skipDuplicates for better performance
+    await prisma.author.createMany({
+      data: batch,
+      skipDuplicates: true,
     })
   } catch (error) {
-    console.warn(`Error processing batch: ${error}`)
-    // Fallback to individual upserts if batch fails
-    for (const author of batch) {
-      try {
-        await prisma.author.upsert({
-          where: { openLibraryId: author.openLibraryId },
-          update: author,
-          create: author,
-        })
-      } catch (individualError) {
-        console.warn(`Error inserting author ${author.openLibraryId}: ${individualError}`)
+    console.warn(`Error with bulk insert: ${error}`)
+    // Fallback to individual upserts if bulk insert fails
+    await prisma.$transaction(async (tx: any) => {
+      for (const author of batch) {
+        try {
+          await tx.author.upsert({
+            where: { openLibraryId: author.openLibraryId },
+            update: author,
+            create: author,
+          })
+        } catch (individualError) {
+          console.warn(`Error inserting author ${author.openLibraryId}: ${individualError}`)
+        }
       }
-    }
+    })
   }
 }
 
@@ -265,8 +341,11 @@ async function main() {
       process.exit(1)
     }
     
+    // Count authors in file first
+    const totalAuthors = await countAuthorsInFile(DUMP_FILE)
+    
     // Process the file
-    await processAuthorsFile(DUMP_FILE)
+    await processAuthorsFile(DUMP_FILE, totalAuthors)
     
     console.log('Import completed successfully!')
     

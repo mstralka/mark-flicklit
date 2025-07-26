@@ -8,9 +8,8 @@ ALTER DATABASE flicklit CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- The main user is already created via environment variables
 
 -- Set MySQL configurations for better performance with large datasets
-SET GLOBAL innodb_buffer_pool_size = 256M;
+SET GLOBAL innodb_buffer_pool_size = 268435456; -- 256MB in bytes
 SET GLOBAL max_connections = 200;
-SET GLOBAL innodb_log_file_size = 64M;
 
 -- Optimize for the types of queries FlickLit will perform
 SET GLOBAL innodb_flush_log_at_trx_commit = 2;

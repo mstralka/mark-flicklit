@@ -1,5 +1,5 @@
 # Multi-stage build for Node.js backend
-FROM node:20-ubuntu AS base
+FROM node:22 AS base
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -17,17 +17,18 @@ COPY package.json yarn.lock ./
 # Install dependencies
 RUN yarn install --frozen-lockfile --production=false
 
-# Copy source code
-COPY . .
+# Copy only necessary source files
+COPY src/backend ./src/backend
+COPY tsconfig.json ./
 
 # Generate Prisma client
-RUN cd src/backend && npx prisma generate
+RUN yarn db:generate
 
 # Build the backend
 RUN yarn build:backend
 
 # Production stage
-FROM node:20-ubuntu AS production
+FROM node:22 AS production
 
 # Install system dependencies for production
 RUN apt-get update && apt-get install -y \

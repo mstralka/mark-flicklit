@@ -1,5 +1,5 @@
 # Multi-stage build for React frontend
-FROM node:20-ubuntu AS build
+FROM node:22 AS build
 
 # Set working directory
 WORKDIR /app
@@ -10,8 +10,15 @@ COPY package.json yarn.lock ./
 # Install dependencies
 RUN yarn install --frozen-lockfile
 
-# Copy source code
-COPY . .
+# Copy only necessary source files
+COPY src/frontend ./src/frontend
+COPY src/backend/tsconfig.json ./src/backend/tsconfig.json
+COPY vite.config.ts ./
+COPY tsconfig.json ./
+COPY tsconfig.node.json ./
+COPY index.html ./
+COPY tailwind.config.js ./
+COPY postcss.config.mjs ./
 
 # Build argument for API URL
 ARG VITE_API_URL=http://localhost/api

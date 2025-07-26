@@ -14,7 +14,8 @@ export default defineConfig({
     envDir: '.',
     server: {
         port: 5173,
-        open: true,
+        host: '0.0.0.0', // Allow connections from all hosts in Docker
+        open: false, // Don't try to open browser in container
         proxy: {
             '/api': {
                 target: 'http://localhost:3001',
