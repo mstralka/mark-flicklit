@@ -14,6 +14,7 @@ interface AuthState {
   user: User | null
   tokens: AuthTokens | null
   isAuthenticated: boolean
+  isInitialized: boolean
   isLoading: boolean
   error: string | null
 
@@ -36,6 +37,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       tokens: null,
       isAuthenticated: false,
+      isInitialized: false,
       isLoading: false,
       error: null,
 
@@ -225,6 +227,7 @@ export const useAuthStore = create<AuthState>()(
         const { tokens, user } = get()
         
         if (!tokens || !tokens.token || !user) {
+          set({ isInitialized: true })
           return
         }
 
@@ -240,7 +243,8 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: null,
             tokens: null,
-            isAuthenticated: false
+            isAuthenticated: false,
+            isInitialized: true
           })
           AuthService.setToken(null)
           return
@@ -252,14 +256,16 @@ export const useAuthStore = create<AuthState>()(
           if (freshUser) {
             set({
               user: freshUser,
-              isAuthenticated: true
+              isAuthenticated: true,
+              isInitialized: true
             })
           } else {
             // User not found, clear auth state
             set({
               user: null,
               tokens: null,
-              isAuthenticated: false
+              isAuthenticated: false,
+              isInitialized: true
             })
             AuthService.setToken(null)
           }
@@ -269,7 +275,8 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: null,
             tokens: null,
-            isAuthenticated: false
+            isAuthenticated: false,
+            isInitialized: true
           })
           AuthService.setToken(null)
         }

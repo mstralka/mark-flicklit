@@ -177,11 +177,20 @@ docker/                        # Docker configuration
 - `apiClient.get()`, `apiClient.request()` automatically include JWT Bearer token
 - NEVER use raw `fetch()` for authenticated endpoints - always use `apiClient`
 - Token managed by AuthService and stored in Zustand auth store
+- **Authentication handled by router**: `ProtectedRoute` ensures components only render when authenticated and API client token is set
+- Components can make API calls immediately - no need to check authentication state
 - Example usage:
   ```typescript
-  const response = await apiClient.get<DataType>('/api/admin/resource')
-  if (response.success && response.data) {
-    // Handle successful response
+  // Simple component - no auth checks needed
+  useEffect(() => {
+    fetchData() // Safe to call immediately
+  }, [])
+  
+  const fetchData = async () => {
+    const response = await apiClient.get<DataType>('/api/admin/resource')
+    if (response.success && response.data) {
+      // Handle successful response
+    }
   }
   ```
 
@@ -251,8 +260,10 @@ docker/                        # Docker configuration
 **Frontend API Integration:**
 - Always use `apiClient` for authenticated API calls
 - Never use raw `fetch()` for protected endpoints
+- **Router handles authentication**: Components protected by `ProtectedRoute` can make API calls immediately
 - Handle API responses consistently with success/error checking
 - Use TypeScript interfaces for API response types
+- No need for manual authentication checks in components
 
 **Quality Assurance:**
 - Run `yarn typecheck` before committing changes

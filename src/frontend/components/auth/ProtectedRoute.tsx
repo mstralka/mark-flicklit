@@ -8,13 +8,22 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireEmailVerification = false }: ProtectedRouteProps) {
-  const { isAuthenticated, user, initialize } = useAuthStore()
+  const { isAuthenticated, isInitialized, user, initialize } = useAuthStore()
   const location = useLocation()
 
   useEffect(() => {
     // Initialize auth state on mount
     initialize()
   }, [initialize])
+
+  // Show loading while initializing authentication
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    )
+  }
 
   // If not authenticated, redirect to login with return path
   if (!isAuthenticated || !user) {
@@ -47,12 +56,21 @@ interface PublicRouteProps {
 }
 
 export function PublicRoute({ children, redirectTo = '/dashboard' }: PublicRouteProps) {
-  const { isAuthenticated, initialize } = useAuthStore()
+  const { isAuthenticated, isInitialized, initialize } = useAuthStore()
 
   useEffect(() => {
     // Initialize auth state on mount
     initialize()
   }, [initialize])
+
+  // Show loading while initializing authentication
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    )
+  }
 
   // If authenticated, redirect to dashboard or specified route
   if (isAuthenticated) {
