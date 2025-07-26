@@ -1,5 +1,4 @@
-import type { User, WorkSimilarityCompat } from '@/models'
-import type { RecommendationScoreCalculation } from './recommendation-engine'
+import type { User, WorkSimilarityCompat, RecommendationScoreCalculation } from '@/models'
 
 // Re-export for backward compatibility  
 export type { User } from '@/models'

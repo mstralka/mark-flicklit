@@ -3,7 +3,7 @@ import type {
   RecommendationRequest, 
   RecommendationResponse
 } from '../types/recommendation'
-import type { RecommendationScoreCalculation } from '../types/recommendation-engine'
+import type { RecommendationScoreCalculation } from '@/models'
 import type { WorkWithAuthors } from '../models/Work'
 import { parseWork } from '../models/Work'
 import { parseAuthor } from '../models/Author'

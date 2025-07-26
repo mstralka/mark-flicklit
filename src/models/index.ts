@@ -24,9 +24,11 @@ export type {
 export type {
   RecommendationScore,
   RecommendationScoreRaw,
+  RecommendationScoreCalculation,
   RecommendationScoreCreateInput,
   RecommendationScoreUpdateInput,
-  parseRecommendationScore
+  parseRecommendationScore,
+  toCalculationFormat
 } from './RecommendationScore'
 export type {
   WorkSimilarity,

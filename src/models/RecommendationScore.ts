@@ -57,3 +57,19 @@ export interface RecommendationScoreUpdateInput {
   finalScore?: number
   reasons?: string[]
 }
+
+// Helper type for calculations (without database metadata)
+export type RecommendationScoreCalculation = Omit<RecommendationScore, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
+
+// Helper function to create calculation-only format
+export function toCalculationFormat(score: RecommendationScore): RecommendationScoreCalculation {
+  return {
+    workId: score.workId,
+    contentScore: score.contentScore,
+    collaborativeScore: score.collaborativeScore,
+    noveltyBonus: score.noveltyBonus,
+    negativeMultiplier: score.negativeMultiplier,
+    finalScore: score.finalScore,
+    reasons: score.reasons
+  }
+}

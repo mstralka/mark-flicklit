@@ -1,6 +1,6 @@
 import type { WorkWithAuthors } from '@/models'
 import type { User } from '@/types'
-import type { RecommendationScoreCalculation } from '../types/recommendation-engine'
+import type { RecommendationScoreCalculation } from '@/models'
 
 export interface DiversityMetrics {
   subjectDiversity: number

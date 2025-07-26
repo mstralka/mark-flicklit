@@ -1,6 +1,6 @@
 import { PrismaClient } from '@/generated/client'
 import type { User } from '@/types'
-import type { RecommendationScoreCalculation } from '../types/recommendation-engine'
+import type { RecommendationScoreCalculation } from '@/models'
 
 export interface RealtimeUpdate {
   userId: string
