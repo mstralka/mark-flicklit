@@ -1,5 +1,4 @@
 import type { Author } from './Author'
-import { parseJsonArray } from '../utils/json'
 
 // Raw database interface (how Prisma returns data)
 export interface WorkRaw {
@@ -14,12 +13,12 @@ export interface WorkRaw {
   description?: string | null
   firstPublishDate?: string | null
   firstSentence?: string | null
-  subjects?: string | null // JSON string
-  subjectPlaces?: string | null // JSON string
-  subjectTimes?: string | null // JSON string
-  subjectPeople?: string | null // JSON string
-  originalLanguages?: string | null // JSON string
-  otherTitles?: string | null // JSON string
+  subjects?: string[] | null // Native PostgreSQL array
+  subjectPlaces?: string[] | null // Native PostgreSQL array
+  subjectTimes?: string[] | null // Native PostgreSQL array
+  subjectPeople?: string[] | null // Native PostgreSQL array
+  originalLanguages?: string[] | null // Native PostgreSQL array
+  otherTitles?: string[] | null // Native PostgreSQL array
 }
 
 // Application interface (with parsed arrays)
@@ -52,12 +51,12 @@ export function parseWork(raw: WorkRaw): Work {
     description: raw.description || undefined,
     firstPublishDate: raw.firstPublishDate || undefined,
     firstSentence: raw.firstSentence || undefined,
-    subjects: parseJsonArray(raw.subjects || null),
-    subjectPlaces: parseJsonArray(raw.subjectPlaces || null),
-    subjectTimes: parseJsonArray(raw.subjectTimes || null),
-    subjectPeople: parseJsonArray(raw.subjectPeople || null),
-    originalLanguages: parseJsonArray(raw.originalLanguages || null),
-    otherTitles: parseJsonArray(raw.otherTitles || null),
+    subjects: raw.subjects || [],
+    subjectPlaces: raw.subjectPlaces || [],
+    subjectTimes: raw.subjectTimes || [],
+    subjectPeople: raw.subjectPeople || [],
+    originalLanguages: raw.originalLanguages || [],
+    otherTitles: raw.otherTitles || [],
   }
 }
 

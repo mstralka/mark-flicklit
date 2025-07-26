@@ -9,7 +9,7 @@ FlickLit is a full-stack TypeScript web application for book recommendations wit
 **Architecture:**
 - **Backend**: Express.js API server with JWT authentication
 - **Frontend**: React SPA with HTTP client communication
-- **Database**: Prisma ORM with SQLite (development) / MySQL (production)
+- **Database**: Prisma ORM with SQLite (development) / PostgreSQL (production)
 - **Deployment**: Docker Compose stack with nginx reverse proxy
 
 **Tech Stack:**
@@ -20,7 +20,7 @@ FlickLit is a full-stack TypeScript web application for book recommendations wit
 - **Icons**: Heroicons
 - **Build**: Vite (frontend), tsc (backend)
 - **Quality**: ESLint, TypeScript strict mode
-- **Infrastructure**: Docker, nginx, MySQL, Valkey (Redis-compatible)
+- **Infrastructure**: Docker, nginx, PostgreSQL, Valkey (Redis-compatible)
 
 ## Development Setup
 
@@ -71,6 +71,27 @@ yarn import:works:skip-download        # Import works from existing file
 yarn import:works:force                # Force re-download works file
 ```
 
+**Database Connection Commands:**
+```bash
+# Linux/macOS
+./db-connect.sh                        # Connect to PostgreSQL with psql
+./db-connect.sh studio                 # Open Prisma Studio (database GUI)
+./db-connect.sh backup [file]          # Backup database to file
+./db-connect.sh restore [file]         # Restore database from file
+./db-connect.sh info                   # Show database connection info
+./db-connect.sh logs                   # Show PostgreSQL container logs
+./db-connect.sh status                 # Check database container status
+
+# Windows
+db-connect.bat                         # Connect to PostgreSQL with psql
+db-connect.bat studio                  # Open Prisma Studio (database GUI)
+db-connect.bat backup [file]           # Backup database to file
+db-connect.bat restore [file]          # Restore database from file
+db-connect.bat info                    # Show database connection info
+db-connect.bat logs                    # Show PostgreSQL container logs
+db-connect.bat status                  # Check database container status
+```
+
 ## Architecture
 
 **Directory Structure:**
@@ -98,7 +119,7 @@ src/
 docker/                        # Docker configuration
 ├── backend/                   # Backend container config
 ├── frontend/                  # Frontend container config
-├── mysql/                     # MySQL initialization
+├── postgres/                  # PostgreSQL initialization
 └── nginx/                     # Nginx proxy config
 ```
 
@@ -149,7 +170,7 @@ docker/                        # Docker configuration
 - All services containerized with hot reload
 - Frontend: http://localhost:8080 (via nginx proxy) or http://localhost:5173 (direct)
 - Backend: http://localhost:3001
-- Database: MySQL container on port 3306
+- Database: PostgreSQL container on port 5432
 - Cache: Valkey container on port 6379
 - Environment: Load from `.env.docker.local`
 
@@ -157,7 +178,7 @@ docker/                        # Docker configuration
 - Multi-stage builds for optimized images
 - Frontend: Served by nginx (static build)
 - Backend: Node.js production server
-- Database: MySQL with performance tuning
+- Database: PostgreSQL with performance tuning
 - SSL/HTTPS support via nginx
 - Environment: Load from `.env.docker.local`
 
@@ -171,7 +192,7 @@ docker/                        # Docker configuration
 - JWT authentication with secure password hashing (bcrypt)
 - Database arrays (subjects, alternateNames, etc.) are stored as JSON strings
 - All models include createdAt/updatedAt timestamps
-- Environment-based database configuration (SQLite local, MySQL production)
+- Environment-based database configuration (SQLite local, PostgreSQL production)
 - SQLite configured with WAL mode for better concurrent performance
 - Import scripts use transactions for optimal bulk insert performance
 - Junction table follows Laravel convention: `author_work` (alphabetical order)

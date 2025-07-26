@@ -1,4 +1,3 @@
-import { parseJsonArray } from '../utils/json'
 
 // Raw database interface (how Prisma returns data)
 export interface AuthorRaw {
@@ -13,11 +12,11 @@ export interface AuthorRaw {
   birthDate?: string | null
   deathDate?: string | null
   bio?: string | null
-  alternateNames?: string | null // JSON string
+  alternateNames?: string[] | null // Native PostgreSQL array
   location?: string | null
   easternOrder?: boolean | null
   wikipedia?: string | null
-  links?: string | null // JSON string
+  links?: any | null // Native PostgreSQL JSON
 }
 
 // Application interface (with parsed arrays)
@@ -49,11 +48,11 @@ export function parseAuthor(raw: AuthorRaw): Author {
     birthDate: raw.birthDate || undefined,
     deathDate: raw.deathDate || undefined,
     bio: raw.bio || undefined,
-    alternateNames: parseJsonArray(raw.alternateNames || null),
+    alternateNames: raw.alternateNames || [],
     location: raw.location || undefined,
     easternOrder: raw.easternOrder || undefined,
     wikipedia: raw.wikipedia || undefined,
-    links: parseJsonArray(raw.links || null),
+    links: Array.isArray(raw.links) ? raw.links : (raw.links ? [raw.links] : []),
   }
 }
 

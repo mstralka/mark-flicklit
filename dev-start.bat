@@ -110,19 +110,19 @@ goto :eof
 :wait_for_services
 call :print_status "Waiting for services to be ready..."
 
-REM Wait for MySQL
-call :print_status "Waiting for MySQL..."
+REM Wait for PostgreSQL
+call :print_status "Waiting for PostgreSQL..."
 set timeout=30
-:wait_mysql
-docker compose exec -T mysql mysqladmin ping -h localhost --silent >nul 2>&1
-if !errorlevel! equ 0 goto :mysql_ready
+:wait_postgres
+docker compose exec -T postgres pg_isready -U flicklit -d flicklit >nul 2>&1
+if !errorlevel! equ 0 goto :postgres_ready
 timeout /t 2 /nobreak >nul
 set /a timeout-=1
-if !timeout! gtr 0 goto :wait_mysql
-call :print_error "MySQL failed to start within 60 seconds"
+if !timeout! gtr 0 goto :wait_postgres
+call :print_error "PostgreSQL failed to start within 60 seconds"
 exit /b 1
 
-:mysql_ready
+:postgres_ready
 REM Wait for backend (using PowerShell for HTTP request)
 call :print_status "Waiting for backend..."
 set timeout=30
@@ -150,7 +150,7 @@ echo    Backend API:          http://localhost:3001
 echo    Backend Health:       http://localhost:3001/health
 echo.
 echo 💾 Database:
-echo    MySQL:                localhost:3306
+echo    PostgreSQL:           localhost:5432
 echo    Database:             flicklit
 echo.
 echo 🔧 Development Features:

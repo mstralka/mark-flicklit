@@ -28,6 +28,9 @@
     "import:works": "tsx scripts/download-works.ts",
     "import:works:skip-download": "tsx scripts/download-works.ts --skip-download",
     "import:works:force": "tsx scripts/download-works.ts --force-download",
+    "import:covers": "tsx scripts/download-covers.ts",
+    "import:covers:skip-download": "tsx scripts/download-covers.ts --skip-download",
+    "import:covers:force": "tsx scripts/download-covers.ts --force-download",
     "test:recommendations": "cd src/backend && tsx ../test-recommendations.ts",
     "test:collaborative": "cd src/backend && tsx ../test-collaborative.ts"
   },

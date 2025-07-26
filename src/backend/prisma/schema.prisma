@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -19,23 +19,24 @@ model Author {
 
   // OpenLibrary fields
   openLibraryId  String?  @unique
-  name           String @db.VarChar(1024)
-  personalName   String? @db.Text
+  name           String
+  personalName   String?
   birthDate      String?
   deathDate      String?
-  bio            String? @db.Text
-  alternateNames String? @db.Text // JSON array stored as text
+  bio            String?
+  alternateNames String[] // Native PostgreSQL array
   location       String?
   easternOrder   Boolean? @default(false)
   wikipedia      String?
-  links          String? @db.Text // JSON array stored as text
+  links          Json? // Native PostgreSQL JSON
 
   // Relations
   works AuthorWork[]
 
   // Indexes for recommendation engine performance
-  @@index([name(length: 768)], name: "idx_authors_name")
+  @@index([name], name: "idx_authors_name")
   @@index([birthDate], name: "idx_authors_birth_date")
+  @@index([alternateNames], name: "idx_authors_alternate_names", type: Gin)
   @@map("authors")
 }
 
@@ -46,20 +47,21 @@ model Work {
 
   // OpenLibrary fields
   openLibraryId     String? @unique
-  title             String @db.Text
-  subtitle          String? @db.Text
-  description       String? @db.Text
+  title             String
+  subtitle          String?
+  description       String?
   firstPublishDate  String?
-  firstSentence     String? @db.Text
-  subjects          String? @db.Text // JSON array stored as text
-  subjectPlaces     String? @db.Text // JSON array stored as text
-  subjectTimes      String? @db.Text // JSON array stored as text
-  subjectPeople     String? @db.Text // JSON array stored as text
-  originalLanguages String? @db.Text // JSON array stored as text
-  otherTitles       String? @db.Text // JSON array stored as text
+  firstSentence     String?
+  subjects          String[] // Native PostgreSQL array
+  subjectPlaces     String[] // Native PostgreSQL array
+  subjectTimes      String[] // Native PostgreSQL array
+  subjectPeople     String[] // Native PostgreSQL array 
+  originalLanguages String[] // Native PostgreSQL array
+  otherTitles       String[] // Native PostgreSQL array
 
   // Relations
   authors              AuthorWork[]
+  covers               Cover[]
   userInteractions     UserInteraction[]
   recommendationScores RecommendationScore[]
   sourceWorkSimilarities WorkSimilarity[] @relation("SourceWorkSimilarity")
@@ -68,6 +70,11 @@ model Work {
   // Indexes for recommendation engine performance
   @@index([firstPublishDate], name: "idx_works_publish_date")
   @@index([createdAt(sort: Desc)], name: "idx_works_created_at")
+  @@index([subjects], name: "idx_works_subjects", type: Gin)
+  @@index([subjectPlaces], name: "idx_works_subject_places", type: Gin)
+  @@index([subjectTimes], name: "idx_works_subject_times", type: Gin)
+  @@index([subjectPeople], name: "idx_works_subject_people", type: Gin)
+  @@index([originalLanguages], name: "idx_works_languages", type: Gin)
   @@map("works")
 }
 
@@ -124,20 +131,20 @@ model UserProfile {
   userId    Int      @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // Preference weights (0-1 scale) stored as JSON strings
-  subjectPreferences  String? @db.Text // JSON: Record<string, number>
-  placePreferences    String? @db.Text // JSON: Record<string, number>
-  timePreferences     String? @db.Text // JSON: Record<string, number>
-  peoplePreferences   String? @db.Text // JSON: Record<string, number>
-  languagePreferences String? @db.Text // JSON: Record<string, number>
+  // Preference weights (0-1 scale) stored as native JSON
+  subjectPreferences  Json? // Record<string, number>
+  placePreferences    Json? // Record<string, number>
+  timePreferences     Json? // Record<string, number>
+  peoplePreferences   Json? // Record<string, number>
+  languagePreferences Json? // Record<string, number>
   
   // Temporal preferences
   preferredPublishEra String?
   
-  // Negative preferences stored as JSON strings
-  dislikedSubjects String? @db.Text // JSON: Record<string, number>
-  dislikedPlaces   String? @db.Text // JSON: Record<string, number>
-  dislikedAuthors  String? @db.Text // JSON: Record<string, number>
+  // Negative preferences stored as native JSON
+  dislikedSubjects Json? // Record<string, number>
+  dislikedPlaces   Json? // Record<string, number>
+  dislikedAuthors  Json? // Record<string, number>
   
   // Interaction stats
   totalLikes        Int      @default(0)
@@ -181,7 +188,7 @@ model RecommendationScore {
   noveltyBonus         Float
   negativeMultiplier   Float
   finalScore           Float
-  reasons              String @db.Text // JSON array of strings
+  reasons              String[] // Native PostgreSQL array
   
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   work                 Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
@@ -213,4 +220,35 @@ model WorkSimilarity {
   @@index([similarityType], name: "idx_work_similarity_type")
   @@unique([sourceWorkId, targetWorkId, similarityType], name: "unique_work_similarity")
   @@map("work_similarities")
+}
+
+model Cover {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  workId    Int
+  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  
+  // OpenLibrary cover fields
+  openLibraryCoverId String?  @unique // Cover ID from OpenLibrary
+  isbn10             String?
+  isbn13             String?
+  size               String?  // S, M, L
+  width              Int?
+  height             Int?
+  url                String? // Full URL to cover image
+  sourceUrl          String? // Original source URL if different
+  
+  // Metadata
+  contentType        String?  // image/jpeg, image/png, etc.
+  fileSize           Int?     // Size in bytes
+  lastModified       DateTime?
+  
+  // Indexes for cover queries
+  @@index([workId], name: "idx_covers_work_id")
+  @@index([openLibraryCoverId], name: "idx_covers_ol_id")
+  @@index([isbn10], name: "idx_covers_isbn10")
+  @@index([isbn13], name: "idx_covers_isbn13")
+  @@map("covers")
 }

@@ -140,7 +140,7 @@ export class TrendAnalysis {
 
     for (const interaction of historicalInteractions) {
       const season = this.getSeasonFromDate(interaction.createdAt)
-      const subjects = JSON.parse(interaction.work.subjects || '[]') as string[]
+      const subjects = interaction.work.subjects || []
       
       seasonalData[season].push({
         subjects,
@@ -238,7 +238,7 @@ export class TrendAnalysis {
       const authorCounts: Record<number, { name: string; count: number }> = {}
 
       for (const interaction of interactions.filter(i => i.liked)) {
-        const subjects = JSON.parse(interaction.work.subjects || '[]') as string[]
+        const subjects = interaction.work.subjects || []
         for (const subject of subjects) {
           subjectCounts[subject] = (subjectCounts[subject] || 0) + 1
         }
@@ -371,7 +371,7 @@ export class TrendAnalysis {
     const subjectCounts: Record<string, number> = {}
     
     for (const interaction of recentLikes) {
-      const subjects = JSON.parse(interaction.work.subjects || '[]') as string[]
+      const subjects = interaction.work.subjects || []
       for (const subject of subjects) {
         subjectCounts[subject] = (subjectCounts[subject] || 0) + 1
       }

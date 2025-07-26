@@ -105,14 +105,14 @@ start_services() {
 wait_for_services() {
     print_status "Waiting for services to be ready..."
     
-    # Wait for MySQL
-    print_status "Waiting for MySQL..."
+    # Wait for PostgreSQL
+    print_status "Waiting for PostgreSQL..."
     timeout=60
-    while ! docker compose exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; do
+    while ! docker compose exec -T postgres pg_isready -U flicklit -d flicklit 2>/dev/null; do
         sleep 2
         timeout=$((timeout - 2))
         if [[ $timeout -le 0 ]]; then
-            print_error "MySQL failed to start within 60 seconds"
+            print_error "PostgreSQL failed to start within 60 seconds"
             return 1
         fi
     done
@@ -144,7 +144,7 @@ show_status() {
     echo "   Backend Health:       http://localhost:3001/health"
     echo
     echo "💾 Database:"
-    echo "   MySQL:                localhost:3306"
+    echo "   PostgreSQL:           localhost:5432"
     echo "   Database:             flicklit"
     echo
     echo "🔧 Development Features:"

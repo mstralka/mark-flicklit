@@ -8,15 +8,15 @@ FlickLit uses a hybrid recommendation system that combines content-based filteri
 
 ### Available Attributes for Recommendations
 
-**Work Attributes:**
-- `subjects`: Content categories (e.g., "Fiction", "Romance", "Science Fiction")
-- `subjectPlaces`: Geographic settings (e.g., "England", "New York")
-- `subjectTimes`: Time periods (e.g., "20th century", "Medieval")
-- `subjectPeople`: People mentioned (e.g., "Napoleon", "Shakespeare")
-- `originalLanguages`: Original publication languages
-- `firstPublishDate`: Publication era for temporal preferences
-- `description`: Text content for NLP analysis
-- `title` & `subtitle`: For semantic similarity
+**Work Attributes (PostgreSQL-optimized):**
+- `subjects`: Content categories stored as native PostgreSQL arrays with GIN indexing
+- `subjectPlaces`: Geographic settings as PostgreSQL arrays for fast containment queries
+- `subjectTimes`: Time periods as PostgreSQL arrays with efficient intersection operations  
+- `subjectPeople`: People mentioned as PostgreSQL arrays for entity-based filtering
+- `originalLanguages`: Original publication languages as PostgreSQL arrays
+- `firstPublishDate`: Publication era for temporal preferences (indexed)
+- `description`: Text content for NLP analysis with full-text search capability
+- `title` & `subtitle`: For semantic similarity with PostgreSQL full-text search
 
 **Author Attributes:**
 - `location`: Author's geographic origin
@@ -118,14 +118,45 @@ interface RecommendationEngine {
 - Generates collaborative recommendations
 - Balances popularity bias with personalization
 
-### Database Optimizations
+### Database Optimizations (PostgreSQL)
 
-**Indexes:**
+**GIN Indexes for Array Operations:**
 ```sql
-CREATE INDEX idx_user_interactions_user_liked ON user_interactions(userId, liked);
-CREATE INDEX idx_user_interactions_work_liked ON user_interactions(workId, liked);
+-- PostgreSQL native array indexes for fast containment and intersection queries
 CREATE INDEX idx_works_subjects ON works USING GIN(subjects);
-CREATE INDEX idx_works_publish_date ON works(firstPublishDate);
+CREATE INDEX idx_works_subject_places ON works USING GIN("subjectPlaces");
+CREATE INDEX idx_works_subject_times ON works USING GIN("subjectTimes");
+CREATE INDEX idx_works_subject_people ON works USING GIN("subjectPeople");
+CREATE INDEX idx_works_languages ON works USING GIN("originalLanguages");
+CREATE INDEX idx_authors_alternate_names ON authors USING GIN("alternateNames");
+
+-- Standard indexes for filtering and sorting
+CREATE INDEX idx_user_interactions_user_liked ON user_interactions("userId", liked);
+CREATE INDEX idx_user_interactions_work_liked ON user_interactions("workId", liked);
+CREATE INDEX idx_works_publish_date ON works("firstPublishDate");
+CREATE INDEX idx_works_created_at ON works("createdAt" DESC);
+
+-- Full-text search indexes (created via raw SQL, not Prisma)
+CREATE INDEX idx_works_fulltext ON works USING GIN(to_tsvector('english', title || ' ' || COALESCE(description, '')));
+```
+
+**PostgreSQL Array Query Optimization:**
+```sql  
+-- Fast array containment queries
+SELECT * FROM works WHERE subjects && ARRAY['Fiction', 'Romance'];
+
+-- Array intersection for similarity scoring
+SELECT w1.id, w2.id, 
+       cardinality(w1.subjects & w2.subjects) as common_subjects
+FROM works w1, works w2 
+WHERE w1.id != w2.id AND w1.subjects && w2.subjects;
+
+-- Full-text search with ranking
+SELECT *, ts_rank(to_tsvector('english', title || ' ' || COALESCE(description, '')), 
+                  plainto_tsquery('english', 'search terms')) as rank
+FROM works 
+WHERE to_tsvector('english', title || ' ' || COALESCE(description, '')) @@ plainto_tsquery('english', 'search terms')
+ORDER BY rank DESC;
 ```
 
 **Precomputed Tables:**

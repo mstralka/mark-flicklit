@@ -7,7 +7,7 @@ This directory contains Docker configuration files for running FlickLit in conta
 The Docker stack includes:
 
 - **nginx**: Reverse proxy and static file server
-- **mysql**: Production database 
+- **postgres**: Production database 
 - **valkey**: Redis-compatible cache (for future use)
 - **backend**: Express.js API server (Node.js/Ubuntu)
 - **frontend**: React application served by nginx (Ubuntu)
@@ -75,12 +75,12 @@ dev-stop.bat            # Stop development environment
 - **Ports**: 80, 443
 - **Config**: `./docker/nginx/`
 
-### mysql
-- **Image**: mysql:8.0
+### postgres
+- **Image**: postgres:16
 - **Purpose**: Primary database
-- **Port**: 3306
-- **Data**: Persisted in `mysql_data` volume
-- **Init**: `./docker/mysql/init/`
+- **Port**: 5432
+- **Data**: Persisted in `postgres_data` volume
+- **Init**: `./docker/postgres/init/`
 
 ### valkey
 - **Image**: valkey/valkey:7
@@ -107,10 +107,9 @@ Required variables in `.env.docker.local`:
 
 ```bash
 # Database
-MYSQL_ROOT_PASSWORD=secure_root_password
-MYSQL_DATABASE=flicklit  
-MYSQL_USER=flicklit
-MYSQL_PASSWORD=secure_password
+POSTGRES_DB=flicklit
+POSTGRES_USER=flicklit
+POSTGRES_PASSWORD=secure_password
 
 # Application
 JWT_SECRET=super_secure_jwt_secret_32_chars_min
@@ -151,10 +150,10 @@ docker compose exec backend yarn import:works
 
 ```bash
 # Database backup
-docker compose exec mysql mysqldump -u flicklit -p flicklit > backup.sql
+docker compose exec postgres pg_dump -U flicklit flicklit > backup.sql
 
 # Restore database
-docker compose exec -i mysql mysql -u flicklit -p flicklit < backup.sql
+docker compose exec -i postgres psql -U flicklit -d flicklit < backup.sql
 ```
 
 ## Development
@@ -167,7 +166,7 @@ The project includes cross-platform scripts for easy Docker management:
 - ✅ Automatic prerequisite checking (Docker running, required files)
 - ✅ Environment setup with `.env.docker.local` template
 - ✅ Container cleanup and image building
-- ✅ Service health checks (MySQL, backend API)
+- ✅ Service health checks (PostgreSQL, backend API)
 - ✅ Colored output with status messages
 - ✅ Service URL display
 - ✅ Optional log following
@@ -246,7 +245,7 @@ docker compose up -d --scale backend=3
 All services include health checks:
 - Backend: `GET /health`
 - Frontend: `GET /health` 
-- MySQL: `mysqladmin ping`
+- PostgreSQL: `pg_isready`
 - Valkey: `valkey-cli ping`
 
 ## Troubleshooting
@@ -267,11 +266,11 @@ All services include health checks:
 
 3. **Database connection issues**
    ```bash
-   # Check MySQL logs
-   docker compose logs mysql
+   # Check PostgreSQL logs
+   docker compose logs postgres
    
    # Verify database is ready
-   docker compose exec mysql mysql -u flicklit -p -e "SELECT 1"
+   docker compose exec postgres psql -U flicklit -d flicklit -c "SELECT 1"
    ```
 
 4. **Build failures**
@@ -284,7 +283,7 @@ All services include health checks:
 
 ### Performance Tuning
 
-1. **MySQL**: Adjust `innodb_buffer_pool_size` in init script
+1. **PostgreSQL**: Adjust `shared_buffers` and other settings in init script
 2. **nginx**: Tune worker processes and connections
 3. **Node.js**: Adjust `NODE_OPTIONS="--max-old-space-size=4096"`
 

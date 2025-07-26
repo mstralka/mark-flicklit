@@ -13,9 +13,9 @@ async function main() {
             birthDate: '1892',
             deathDate: '1973',
             bio: 'John Ronald Reuel Tolkien was an English writer, poet, philologist, and academic.',
-            alternateNames: JSON.stringify(['J. R. R. Tolkien', 'John Tolkien']),
+            alternateNames: ['J. R. R. Tolkien', 'John Tolkien'],
             location: 'England',
-            links: JSON.stringify([]),
+            links: [],
         },
     })
 
@@ -26,9 +26,9 @@ async function main() {
             birthDate: '1903',
             deathDate: '1950',
             bio: 'Eric Arthur Blair, known by his pen name George Orwell, was an English novelist and essayist.',
-            alternateNames: JSON.stringify(['Eric Blair', 'Eric Arthur Blair']),
+            alternateNames: ['Eric Blair', 'Eric Arthur Blair'],
             location: 'England',
-            links: JSON.stringify([]),
+            links: [],
         },
     })
 
@@ -39,12 +39,12 @@ async function main() {
             subtitle: 'The Fellowship of the Ring',
             description: 'The first part of J. R. R. Tolkien\'s epic fantasy novel The Lord of the Rings.',
             firstPublishDate: '1954',
-            subjects: JSON.stringify(['Fantasy', 'Adventure', 'Epic']),
-            subjectPlaces: JSON.stringify(['Middle-earth']),
-            subjectTimes: JSON.stringify([]),
-            subjectPeople: JSON.stringify([]),
-            originalLanguages: JSON.stringify(['English']),
-            otherTitles: JSON.stringify([]),
+            subjects: ['Fantasy', 'Adventure', 'Epic'],
+            subjectPlaces: ['Middle-earth'],
+            subjectTimes: [],
+            subjectPeople: [],
+            originalLanguages: ['English'],
+            otherTitles: [],
         },
     })
 
@@ -53,12 +53,12 @@ async function main() {
             title: '1984',
             description: 'A dystopian social science fiction novel and cautionary tale.',
             firstPublishDate: '1949',
-            subjects: JSON.stringify(['Dystopian fiction', 'Political fiction', 'Science fiction']),
-            subjectPlaces: JSON.stringify([]),
-            subjectTimes: JSON.stringify([]),
-            subjectPeople: JSON.stringify([]),
-            originalLanguages: JSON.stringify(['English']),
-            otherTitles: JSON.stringify([]),
+            subjects: ['Dystopian fiction', 'Political fiction', 'Science fiction'],
+            subjectPlaces: [],
+            subjectTimes: [],
+            subjectPeople: [],
+            originalLanguages: ['English'],
+            otherTitles: [],
         },
     })
 

@@ -6,6 +6,17 @@ export type {
   WorkCreateInput, 
   WorkUpdateInput 
 } from './Work'
+export type {
+  Cover,
+  CoverRaw,
+  CoverWithWork,
+  CoverCreateInput,
+  CoverUpdateInput,
+  CoverSize,
+  parseCover,
+  generateCoverUrl,
+  generateCoverUrlByIsbn
+} from './Cover'
 export type { 
   User,
   UserRaw,

@@ -18,15 +18,15 @@ export interface UserProfileRaw {
   createdAt: Date
   updatedAt: Date
   userId: number
-  subjectPreferences?: string | null
-  placePreferences?: string | null
-  timePreferences?: string | null
-  peoplePreferences?: string | null
-  languagePreferences?: string | null
+  subjectPreferences?: any | null // Prisma JsonValue
+  placePreferences?: any | null // Prisma JsonValue
+  timePreferences?: any | null // Prisma JsonValue
+  peoplePreferences?: any | null // Prisma JsonValue
+  languagePreferences?: any | null // Prisma JsonValue
   preferredPublishEra?: string | null
-  dislikedSubjects?: string | null
-  dislikedPlaces?: string | null
-  dislikedAuthors?: string | null
+  dislikedSubjects?: any | null // Prisma JsonValue
+  dislikedPlaces?: any | null // Prisma JsonValue
+  dislikedAuthors?: any | null // Prisma JsonValue
   totalLikes: number
   totalDislikes: number
   lastInteractionAt?: Date | null
@@ -65,13 +65,19 @@ export interface User {
 }
 
 // Utility functions for parsing JSON fields
-function parseJsonRecord(jsonString: string | null | undefined): Record<string, number> {
-  if (!jsonString) return {}
-  try {
-    return JSON.parse(jsonString) || {}
-  } catch {
-    return {}
+function parseJsonRecord(jsonValue: any | null | undefined): Record<string, number> {
+  if (!jsonValue) return {}
+  if (typeof jsonValue === 'object' && jsonValue !== null) {
+    return jsonValue
   }
+  if (typeof jsonValue === 'string') {
+    try {
+      return JSON.parse(jsonValue) || {}
+    } catch {
+      return {}
+    }
+  }
+  return {}
 }
 
 export function parseUserProfile(raw: UserProfileRaw): Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'status' | 'emailVerified'> {

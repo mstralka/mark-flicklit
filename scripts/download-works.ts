@@ -4,10 +4,10 @@ import { createGunzip } from 'zlib'
 import { createReadStream } from 'fs'
 import * as readline from 'readline'
 import { PrismaClient } from '../src/backend/generated/client'
-import dotenv from 'dotenv'
+import { config } from 'dotenv'
 
 // Load environment variables
-dotenv.config()
+config()
 
 const DUMP_URL = 'https://openlibrary.org/data/ol_dump_works_latest.txt.gz'
 const DUMP_FILE = './data/ol_dump_works_latest.txt.gz'
@@ -157,7 +157,7 @@ async function processWorksFile(filePath: string, totalCount: number): Promise<v
   const prisma = new PrismaClient({
     datasources: {
       db: {
-        url: process.env.DATABASE_URL + '?connection_limit=20&pool_timeout=60&connect_timeout=30'
+        url: process.env.DATABASE_URL + '&connection_limit=20&pool_timeout=60&connect_timeout=30'
       }
     }
   })
@@ -172,18 +172,24 @@ async function processWorksFile(filePath: string, totalCount: number): Promise<v
     
     // Drop indexes for faster bulk inserts
     console.log('Dropping indexes for faster import...')
-    try {
-      await prisma.$executeRaw`DROP INDEX idx_works_publish_date ON works`
-      console.log('Dropped idx_works_publish_date')
-    } catch (error) {
-      console.log('Index idx_works_publish_date not found, continuing...')
-    }
+    const indexesToDrop = [
+      'idx_works_publish_date',
+      'idx_works_created_at', 
+      'idx_works_subjects',
+      'idx_works_subject_places',
+      'idx_works_subject_times',
+      'idx_works_subject_people',
+      'idx_works_languages',
+      'idx_works_fulltext'
+    ]
     
-    try {
-      await prisma.$executeRaw`DROP INDEX idx_works_created_at ON works`
-      console.log('Dropped idx_works_created_at')
-    } catch (error) {
-      console.log('Index idx_works_created_at not found, continuing...')
+    for (const indexName of indexesToDrop) {
+      try {
+        await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS ${indexName}`)
+        console.log(`Dropped ${indexName}`)
+      } catch {
+        console.log(`Index ${indexName} not found, continuing...`)
+      }
     }
     
     // Create read stream with gunzip
@@ -222,12 +228,12 @@ async function processWorksFile(filePath: string, totalCount: number): Promise<v
           description: processDescription(workData.description) || null,
           firstPublishDate: workData.first_publish_date || null,
           firstSentence: processFirstSentence(workData.first_sentence) || null,
-          subjects: workData.subjects ? JSON.stringify(workData.subjects) : null,
-          subjectPlaces: workData.subject_places ? JSON.stringify(workData.subject_places) : null,
-          subjectTimes: workData.subject_times ? JSON.stringify(workData.subject_times) : null,
-          subjectPeople: workData.subject_people ? JSON.stringify(workData.subject_people) : null,
-          originalLanguages: workData.original_languages ? JSON.stringify(workData.original_languages) : null,
-          otherTitles: workData.other_titles ? JSON.stringify(workData.other_titles) : null,
+          subjects: workData.subjects || [],
+          subjectPlaces: workData.subject_places || [],
+          subjectTimes: workData.subject_times || [],
+          subjectPeople: workData.subject_people || [],
+          originalLanguages: workData.original_languages || [],
+          otherTitles: workData.other_titles || [],
         }
 
         batch.push(dbWork)
@@ -282,18 +288,24 @@ async function processWorksFile(filePath: string, totalCount: number): Promise<v
     
     // Recreate indexes after import
     console.log('Recreating indexes...')
-    try {
-      await prisma.$executeRaw`CREATE INDEX idx_works_publish_date ON works (firstPublishDate)`
-      console.log('Recreated idx_works_publish_date')
-    } catch (error) {
-      console.warn('Error recreating idx_works_publish_date:', error)
-    }
+    const indexesToCreate = [
+      'CREATE INDEX idx_works_publish_date ON works ("firstPublishDate")',
+      'CREATE INDEX idx_works_created_at ON works ("createdAt" DESC)',
+      'CREATE INDEX idx_works_subjects ON works USING GIN (subjects)',
+      'CREATE INDEX idx_works_subject_places ON works USING GIN ("subjectPlaces")',
+      'CREATE INDEX idx_works_subject_times ON works USING GIN ("subjectTimes")',
+      'CREATE INDEX idx_works_subject_people ON works USING GIN ("subjectPeople")',
+      'CREATE INDEX idx_works_languages ON works USING GIN ("originalLanguages")',
+      'CREATE INDEX idx_works_fulltext ON works USING GIN (to_tsvector(\'english\', title || \' \' || COALESCE(description, \'\')))'
+    ]
     
-    try {
-      await prisma.$executeRaw`CREATE INDEX idx_works_created_at ON works (createdAt DESC)`
-      console.log('Recreated idx_works_created_at')
-    } catch (error) {
-      console.warn('Error recreating idx_works_created_at:', error)
+    for (const indexSQL of indexesToCreate) {
+      try {
+        await prisma.$executeRawUnsafe(indexSQL)
+        console.log(`Recreated index: ${indexSQL.split(' ')[2]}`)
+      } catch (error) {
+        console.warn(`Error recreating index: ${error}`)
+      }
     }
     
     console.log('Index recreation completed')
@@ -304,8 +316,8 @@ async function processWorksFile(filePath: string, totalCount: number): Promise<v
     // Try to recreate indexes even if import failed
     console.log('Attempting to recreate indexes after error...')
     try {
-      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_works_publish_date ON works (firstPublishDate)`
-      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_works_created_at ON works (createdAt DESC)`
+      await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_works_publish_date ON works ("firstPublishDate")')
+      await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_works_created_at ON works ("createdAt" DESC)')
       console.log('Indexes recreated after error')
     } catch (indexError) {
       console.warn('Could not recreate indexes after error:', indexError)

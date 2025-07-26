@@ -1,23 +1,23 @@
 services:
   # Database
-  mysql:
-    image: mysql:8.0
-    container_name: flicklit_mysql
+  postgres:
+    image: postgres:16
+    container_name: flicklit_postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-flicklit}
-      MYSQL_USER: ${MYSQL_USER:-flicklit}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-flicklit}
+      POSTGRES_USER: ${POSTGRES_USER:-flicklit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
     ports:
-      - "3306:3306"
+      - "5432:5432"
     networks:
       - flicklit_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flicklit} -d ${POSTGRES_DB:-flicklit}"]
       timeout: 20s
       retries: 10
 
@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: mysql://${MYSQL_USER:-flicklit}:${MYSQL_PASSWORD:-password}@mysql:3306/${MYSQL_DATABASE:-flicklit}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-flicklit}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-flicklit}?schema=public
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       PORT: 3001
@@ -57,7 +57,7 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       valkey:
         condition: service_healthy
@@ -108,7 +108,7 @@ services:
       retries: 3
 
 volumes:
-  mysql_data:
+  postgres_data:
     driver: local
   valkey_data:
     driver: local

@@ -9,8 +9,8 @@ import { config } from 'dotenv'
 // Load environment variables
 config()
 
-const DUMP_URL = 'https://openlibrary.org/data/ol_dump_authors_latest.txt.gz'
-const DUMP_FILE = './data/ol_dump_authors_latest.txt.gz'
+const DUMP_URL = 'https://openlibrary.org/data/ol_dump_covers_metadata_latest.txt.gz'
+const DUMP_FILE = './data/ol_dump_covers_metadata_latest.txt.gz'
 const BATCH_SIZE = 5000
 
 // Parse command line arguments
@@ -18,24 +18,18 @@ const args = process.argv.slice(2)
 const SKIP_DOWNLOAD = args.includes('--skip-download') || args.includes('--process-only')
 const FORCE_DOWNLOAD = args.includes('--force-download')
 
-interface OpenLibraryAuthor {
+interface OpenLibraryCover {
   type: { key: string }
   key: string
-  name?: string
-  personal_name?: string
-  birth_date?: string
-  death_date?: string
-  bio?: string | { type: string; value: string }
-  alternate_names?: string[]
-  location?: string
-  eastern_order?: boolean
-  wikipedia?: string
-  links?: Array<{ title?: string; url: string; type?: { key: string } }>
-  remote_ids?: {
-    wikidata?: string
-    viaf?: string
-    [key: string]: string | undefined
-  }
+  isbn_10?: string[]
+  isbn_13?: string[]
+  works?: Array<{ key: string }>
+  source_url?: string
+  width?: number
+  height?: number
+  content_type?: string
+  file_size?: number
+  last_modified?: string
 }
 
 function formatBytes(bytes: number): string {
@@ -104,20 +98,8 @@ async function downloadFile(url: string, filePath: string): Promise<void> {
   console.log(`Downloaded to ${filePath}`)
 }
 
-function processBio(bio: string | { type: string; value: string } | undefined): string | undefined {
-  if (!bio) return undefined
-  if (typeof bio === 'string') return bio
-  if (typeof bio === 'object' && bio.value) return bio.value
-  return undefined
-}
-
-function processLinks(links: Array<{ title?: string; url: string; type?: { key: string } }> | undefined): any {
-  if (!links || !Array.isArray(links)) return null
-  return links.map(link => ({ title: link.title, url: link.url, type: link.type?.key })).filter(link => link.url)
-}
-
-async function countAuthorsInFile(filePath: string): Promise<number> {
-  console.log('Counting authors in file...')
+async function countCoversInFile(filePath: string): Promise<number> {
+  console.log('Counting covers in file...')
   let count = 0
   
   const fileStream = createReadStream(filePath)
@@ -129,20 +111,20 @@ async function countAuthorsInFile(filePath: string): Promise<number> {
 
   for await (const line of rl) {
     const columns = line.split('\t')
-    if (columns.length >= 5 && columns[0] === '/type/author') {
+    if (columns.length >= 5 && columns[0] === '/type/cover') {
       count++
       
       if (count % 50000 === 0) {
-        process.stdout.write(`\rCounting: ${count.toLocaleString()} authors found...`)
+        process.stdout.write(`\rCounting: ${count.toLocaleString()} covers found...`)
       }
     }
   }
   
-  process.stdout.write(`\rTotal authors found: ${count.toLocaleString()}\n`)
+  process.stdout.write(`\rTotal covers found: ${count.toLocaleString()}\n`)
   return count
 }
 
-async function processAuthorsFile(filePath: string, totalCount: number): Promise<void> {
+async function processCoversFile(filePath: string, _totalCount: number): Promise<void> {
   const prisma = new PrismaClient({
     datasources: {
       db: {
@@ -151,32 +133,40 @@ async function processAuthorsFile(filePath: string, totalCount: number): Promise
     }
   })
   let processedCount = 0
+  let skippedCount = 0
   let batch: any[] = []
 
   try {
-    console.log('Processing authors file...')
+    console.log('Processing covers file...')
     
     // Drop indexes for faster bulk inserts
     console.log('Dropping indexes for faster import...')
     try {
-      await prisma.$executeRaw`DROP INDEX IF EXISTS idx_authors_name`
-      console.log('Dropped idx_authors_name')
+      await prisma.$executeRaw`DROP INDEX idx_covers_work_id ON covers`
+      console.log('Dropped idx_covers_work_id')
     } catch {
-      console.log('Index idx_authors_name not found, continuing...')
+      console.log('Index idx_covers_work_id not found, continuing...')
     }
     
     try {
-      await prisma.$executeRaw`DROP INDEX IF EXISTS idx_authors_birth_date`
-      console.log('Dropped idx_authors_birth_date')
+      await prisma.$executeRaw`DROP INDEX idx_covers_ol_id ON covers`
+      console.log('Dropped idx_covers_ol_id')
     } catch {
-      console.log('Index idx_authors_birth_date not found, continuing...')
+      console.log('Index idx_covers_ol_id not found, continuing...')
     }
     
     try {
-      await prisma.$executeRaw`DROP INDEX IF EXISTS idx_authors_alternate_names`
-      console.log('Dropped idx_authors_alternate_names')
+      await prisma.$executeRaw`DROP INDEX idx_covers_isbn10 ON covers`
+      console.log('Dropped idx_covers_isbn10')
     } catch {
-      console.log('Index idx_authors_alternate_names not found, continuing...')
+      console.log('Index idx_covers_isbn10 not found, continuing...')
+    }
+    
+    try {
+      await prisma.$executeRaw`DROP INDEX idx_covers_isbn13 ON covers`
+      console.log('Dropped idx_covers_isbn13')
+    } catch {
+      console.log('Index idx_covers_isbn13 not found, continuing...')
     }
     
     // Create read stream with gunzip
@@ -195,31 +185,50 @@ async function processAuthorsFile(filePath: string, totalCount: number): Promise
 
         const [type, , , , jsonData] = columns
         
-        // Only process author records
-        if (type !== '/type/author') continue
+        // Only process cover records
+        if (type !== '/type/cover') continue
 
         // Parse JSON data
-        const authorData: OpenLibraryAuthor = JSON.parse(jsonData)
+        const coverData: OpenLibraryCover = JSON.parse(jsonData)
         
-        // Skip if no name
-        if (!authorData.name) continue
-
-        // Prepare data for database
-        const dbAuthor = {
-          openLibraryId: authorData.key,
-          name: authorData.name,
-          personalName: authorData.personal_name || null,
-          birthDate: authorData.birth_date || null,
-          deathDate: authorData.death_date || null,
-          bio: processBio(authorData.bio) || null,
-          alternateNames: authorData.alternate_names || [],
-          location: authorData.location || null,
-          easternOrder: authorData.eastern_order || false,
-          wikipedia: authorData.wikipedia || null,
-          links: processLinks(authorData.links),
+        // Skip if no works associated
+        if (!coverData.works || !Array.isArray(coverData.works) || coverData.works.length === 0) {
+          skippedCount++
+          continue
         }
 
-        batch.push(dbAuthor)
+        // Create cover records for each associated work
+        for (const workRef of coverData.works) {
+          if (!workRef.key) continue
+          
+          // Find the work by openLibraryId
+          const work = await prisma.work.findUnique({
+            where: { openLibraryId: workRef.key }
+          })
+          
+          if (!work) {
+            skippedCount++
+            continue
+          }
+
+          // Prepare cover data for database
+          const dbCover = {
+            workId: work.id,
+            openLibraryCoverId: coverData.key,
+            isbn10: coverData.isbn_10 && coverData.isbn_10.length > 0 ? coverData.isbn_10[0] : null,
+            isbn13: coverData.isbn_13 && coverData.isbn_13.length > 0 ? coverData.isbn_13[0] : null,
+            size: 'L', // Default to large, can be determined from dimensions
+            width: coverData.width || null,
+            height: coverData.height || null,
+            url: coverData.key ? `https://covers.openlibrary.org/b/id/${coverData.key.split('/').pop()}-L.jpg` : null,
+            sourceUrl: coverData.source_url || null,
+            contentType: coverData.content_type || 'image/jpeg',
+            fileSize: coverData.file_size || null,
+            lastModified: coverData.last_modified ? new Date(coverData.last_modified) : null,
+          }
+
+          batch.push(dbCover)
+        }
 
         // Process batch when it reaches BATCH_SIZE
         if (batch.length >= BATCH_SIZE) {
@@ -228,13 +237,13 @@ async function processAuthorsFile(filePath: string, totalCount: number): Promise
           batch = []
           
           if (processedCount % 25000 === 0) {
-            const progress = totalCount > 0 ? ((processedCount / totalCount) * 100).toFixed(1) : '0.0'
-            console.log(`Processed ${processedCount.toLocaleString()} / ${totalCount.toLocaleString()} authors (${progress}%)...`)
+            console.log(`Processed ${processedCount.toLocaleString()} covers, skipped ${skippedCount.toLocaleString()}...`)
           }
         }
 
       } catch (error) {
         console.warn(`Error processing line: ${error}`)
+        skippedCount++
       }
     }
 
@@ -244,30 +253,37 @@ async function processAuthorsFile(filePath: string, totalCount: number): Promise
       processedCount += batch.length
     }
 
-    const finalProgress = totalCount > 0 ? ((processedCount / totalCount) * 100).toFixed(1) : '100.0'
-    console.log(`Successfully processed ${processedCount.toLocaleString()} / ${totalCount.toLocaleString()} authors (${finalProgress}%)`)
+    console.log(`Successfully processed ${processedCount.toLocaleString()} covers`)
+    console.log(`Skipped ${skippedCount.toLocaleString()} covers (no associated works found)`)
     
     // Recreate indexes after import
     console.log('Recreating indexes...')
     try {
-      await prisma.$executeRaw`CREATE INDEX idx_authors_name ON authors (name)`
-      console.log('Recreated idx_authors_name')
+      await prisma.$executeRaw`CREATE INDEX idx_covers_work_id ON covers (workId)`
+      console.log('Recreated idx_covers_work_id')
     } catch (error) {
-      console.warn('Error recreating idx_authors_name:', error)
+      console.warn('Error recreating idx_covers_work_id:', error)
     }
     
     try {
-      await prisma.$executeRaw`CREATE INDEX idx_authors_birth_date ON authors ("birthDate")`
-      console.log('Recreated idx_authors_birth_date')
+      await prisma.$executeRaw`CREATE INDEX idx_covers_ol_id ON covers (openLibraryCoverId)`
+      console.log('Recreated idx_covers_ol_id')
     } catch (error) {
-      console.warn('Error recreating idx_authors_birth_date:', error)
+      console.warn('Error recreating idx_covers_ol_id:', error)
     }
     
     try {
-      await prisma.$executeRaw`CREATE INDEX idx_authors_alternate_names ON authors USING GIN ("alternateNames")`
-      console.log('Recreated idx_authors_alternate_names')
+      await prisma.$executeRaw`CREATE INDEX idx_covers_isbn10 ON covers (isbn10)`
+      console.log('Recreated idx_covers_isbn10')
     } catch (error) {
-      console.warn('Error recreating idx_authors_alternate_names:', error)
+      console.warn('Error recreating idx_covers_isbn10:', error)
+    }
+    
+    try {
+      await prisma.$executeRaw`CREATE INDEX idx_covers_isbn13 ON covers (isbn13)`
+      console.log('Recreated idx_covers_isbn13')
+    } catch (error) {
+      console.warn('Error recreating idx_covers_isbn13:', error)
     }
     
     console.log('Index recreation completed')
@@ -278,9 +294,10 @@ async function processAuthorsFile(filePath: string, totalCount: number): Promise
     // Try to recreate indexes even if import failed
     console.log('Attempting to recreate indexes after error...')
     try {
-      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_authors_name ON authors (name)`
-      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_authors_birth_date ON authors ("birthDate")`
-      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_authors_alternate_names ON authors USING GIN ("alternateNames")`
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_covers_work_id ON covers (workId)`
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_covers_ol_id ON covers (openLibraryCoverId)`
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_covers_isbn10 ON covers (isbn10)`
+      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS idx_covers_isbn13 ON covers (isbn13)`
       console.log('Indexes recreated after error')
     } catch (indexError) {
       console.warn('Could not recreate indexes after error:', indexError)
@@ -295,7 +312,7 @@ async function processAuthorsFile(filePath: string, totalCount: number): Promise
 async function processBatch(prisma: PrismaClient, batch: any[]): Promise<void> {
   try {
     // Use createMany for bulk insert with skipDuplicates for better performance
-    await prisma.author.createMany({
+    await prisma.cover.createMany({
       data: batch,
       skipDuplicates: true,
     })
@@ -303,15 +320,17 @@ async function processBatch(prisma: PrismaClient, batch: any[]): Promise<void> {
     console.warn(`Error with bulk insert: ${error}`)
     // Fallback to individual upserts if bulk insert fails
     await prisma.$transaction(async (tx: any) => {
-      for (const author of batch) {
+      for (const cover of batch) {
         try {
-          await tx.author.upsert({
-            where: { openLibraryId: author.openLibraryId },
-            update: author,
-            create: author,
+          await tx.cover.upsert({
+            where: { 
+              openLibraryCoverId: cover.openLibraryCoverId
+            },
+            update: cover,
+            create: cover,
           })
         } catch (individualError) {
-          console.warn(`Error inserting author ${author.openLibraryId}: ${individualError}`)
+          console.warn(`Error inserting cover ${cover.openLibraryCoverId}: ${individualError}`)
         }
       }
     })
@@ -319,14 +338,15 @@ async function processBatch(prisma: PrismaClient, batch: any[]): Promise<void> {
 }
 
 function printUsage() {
-  console.log('OpenLibrary Authors Import Script')
+  console.log('OpenLibrary Covers Import Script')
   console.log('')
   console.log('Usage:')
-  console.log('  yarn import:authors                    # Download and process authors')
-  console.log('  yarn import:authors --skip-download    # Process existing file only')
-  console.log('  yarn import:authors --process-only     # Same as --skip-download')
-  console.log('  yarn import:authors --force-download   # Re-download even if file exists')
+  console.log('  yarn import:covers                    # Download and process covers')
+  console.log('  yarn import:covers --skip-download    # Process existing file only')
+  console.log('  yarn import:covers --process-only     # Same as --skip-download')
+  console.log('  yarn import:covers --force-download   # Re-download even if file exists')
   console.log('')
+  console.log('Note: Works should be imported first for proper cover-work relationships')
 }
 
 async function main() {
@@ -336,7 +356,7 @@ async function main() {
   }
 
   try {
-    console.log('Starting OpenLibrary authors import...')
+    console.log('Starting OpenLibrary covers import...')
     
     if (SKIP_DOWNLOAD) {
       console.log('Skipping download, processing existing file...')
@@ -356,11 +376,11 @@ async function main() {
       process.exit(1)
     }
     
-    // Count authors in file first
-    const totalAuthors = await countAuthorsInFile(DUMP_FILE)
+    // Count covers in file first
+    const totalCovers = await countCoversInFile(DUMP_FILE)
     
     // Process the file
-    await processAuthorsFile(DUMP_FILE, totalAuthors)
+    await processCoversFile(DUMP_FILE, totalCovers)
     
     console.log('Import completed successfully!')
     
