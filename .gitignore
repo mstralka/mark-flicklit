@@ -36,5 +36,8 @@ data/
 # Claude Code
 .claude/settings.local.json
 
-# Ignore genrated files
+# Ignore generated files
 /src/generated/*
+
+# TypeScript build info
+*.tsbuildinfo
