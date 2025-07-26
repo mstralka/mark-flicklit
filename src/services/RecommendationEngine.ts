@@ -1,9 +1,9 @@
 import { PrismaClient } from '@/generated/client'
 import type { 
   RecommendationRequest, 
-  RecommendationResponse, 
-  RecommendationScore
+  RecommendationResponse
 } from '../types/recommendation'
+import type { RecommendationScoreCalculation } from '../types/recommendation-engine'
 import type { WorkWithAuthors } from '../models/Work'
 import { parseWork } from '../models/Work'
 import { parseAuthor } from '../models/Author'
@@ -140,8 +140,8 @@ export class RecommendationEngine {
     user: UserProfile, 
     candidateWorks: WorkWithAuthors[], 
     limit: number
-  ): Promise<RecommendationScore[]> {
-    const scores: RecommendationScore[] = []
+  ): Promise<RecommendationScoreCalculation[]> {
+    const scores: RecommendationScoreCalculation[] = []
 
     for (const work of candidateWorks) {
       const score = await this.calculateWorkScore(user, work)
@@ -157,7 +157,7 @@ export class RecommendationEngine {
   /**
    * Calculate recommendation score for a work
    */
-  private async calculateWorkScore(user: UserProfile, work: WorkWithAuthors): Promise<RecommendationScore> {
+  private async calculateWorkScore(user: UserProfile, work: WorkWithAuthors): Promise<RecommendationScoreCalculation> {
     const reasons: string[] = []
 
     // Content-based score
@@ -361,7 +361,7 @@ export class RecommendationEngine {
   /**
    * Get popular recommendations for users without profiles
    */
-  private async getPopularRecommendations(candidateWorks: WorkWithAuthors[], limit: number): Promise<RecommendationScore[]> {
+  private async getPopularRecommendations(candidateWorks: WorkWithAuthors[], limit: number): Promise<RecommendationScoreCalculation[]> {
     // For now, just return works with basic scoring
     // In the future, this could be based on global popularity metrics
     return candidateWorks.slice(0, limit).map(work => ({

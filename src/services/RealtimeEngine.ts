@@ -1,5 +1,6 @@
 import { PrismaClient } from '@/generated/client'
-import type { User, RecommendationScore } from '@/types'
+import type { User } from '@/types'
+import type { RecommendationScoreCalculation } from '../types/recommendation-engine'
 
 export interface RealtimeUpdate {
   userId: string
@@ -10,7 +11,7 @@ export interface RealtimeUpdate {
 }
 
 export interface CacheEntry {
-  recommendations: RecommendationScore[]
+  recommendations: RecommendationScoreCalculation[]
   timestamp: number
   userFingerprint: string
 }
@@ -70,7 +71,7 @@ export class RealtimeEngine {
   /**
    * Get cached recommendations or indicate they need refresh
    */
-  getCachedRecommendations(userId: string, userFingerprint: string): RecommendationScore[] | null {
+  getCachedRecommendations(userId: string, userFingerprint: string): RecommendationScoreCalculation[] | null {
     const cached = this.recommendationCache.get(userId)
     
     if (!cached) return null
@@ -91,7 +92,7 @@ export class RealtimeEngine {
    */
   cacheRecommendations(
     userId: string, 
-    recommendations: RecommendationScore[], 
+    recommendations: RecommendationScoreCalculation[], 
     userFingerprint: string
   ): void {
     this.recommendationCache.set(userId, {
@@ -143,7 +144,7 @@ export class RealtimeEngine {
   /**
    * Apply real-time adjustments to recommendations
    */
-  applyRealtimeAdjustments(recommendations: RecommendationScore[]): RecommendationScore[] {
+  applyRealtimeAdjustments(recommendations: RecommendationScoreCalculation[]): RecommendationScoreCalculation[] {
     return recommendations.map(rec => {
       const trendingBoost = this.getRealtimeTrendingBoost(rec.workId)
       
@@ -306,7 +307,7 @@ export class RealtimeEngine {
    */
   async preloadRecommendations(
     activeUserIds: string[],
-    getRecommendationsFunction: (userId: string) => Promise<RecommendationScore[]>,
+    getRecommendationsFunction: (userId: string) => Promise<RecommendationScoreCalculation[]>,
     getUserFunction: (userId: string) => Promise<User>
   ): Promise<void> {
     const preloadPromises = activeUserIds.map(async userId => {

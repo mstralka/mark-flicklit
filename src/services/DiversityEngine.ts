@@ -1,5 +1,6 @@
 import type { WorkWithAuthors } from '@/models'
-import type { User, RecommendationScore } from '@/types'
+import type { User } from '@/types'
+import type { RecommendationScoreCalculation } from '../types/recommendation-engine'
 
 export interface DiversityMetrics {
   subjectDiversity: number
@@ -25,13 +26,13 @@ export class DiversityEngine {
    * Apply diversity constraints to recommendations to avoid filter bubbles
    */
   diversifyRecommendations(
-    recommendations: RecommendationScore[],
+    recommendations: RecommendationScoreCalculation[],
     user: User,
     targetDiversity: number = 0.7
-  ): RecommendationScore[] {
+  ): RecommendationScoreCalculation[] {
     if (recommendations.length <= 1) return recommendations
 
-    const diversified: RecommendationScore[] = []
+    const diversified: RecommendationScoreCalculation[] = []
     const selectedWorks: Set<number> = new Set()
 
     // Always include the top recommendation
@@ -137,10 +138,10 @@ export class DiversityEngine {
    * Filter out recommendations that are too similar to recently recommended items
    */
   filterSimilarRecommendations(
-    recommendations: RecommendationScore[],
+    recommendations: RecommendationScoreCalculation[],
     recentlyRecommended: number[],
     _similarityThreshold: number = 0.8
-  ): RecommendationScore[] {
+  ): RecommendationScoreCalculation[] {
     // For this implementation, we'll use a simple approach
     // In a full implementation, you'd calculate actual similarity scores
     return recommendations.filter(rec => 
@@ -152,8 +153,8 @@ export class DiversityEngine {
    * Calculate diversity bonus for a recommendation candidate
    */
   private calculateDiversityBonus(
-    _candidate: RecommendationScore,
-    currentRecommendations: RecommendationScore[],
+    _candidate: RecommendationScoreCalculation,
+    currentRecommendations: RecommendationScoreCalculation[],
     _user: User,
     targetDiversity: number
   ): number {
@@ -307,11 +308,11 @@ export class DiversityEngine {
    * Apply serendipity injection - occasionally recommend unexpected items
    */
   injectSerendipity(
-    recommendations: RecommendationScore[],
+    recommendations: RecommendationScoreCalculation[],
     candidateWorks: WorkWithAuthors[],
     user: User,
     serendipityRate: number = 0.1
-  ): RecommendationScore[] {
+  ): RecommendationScoreCalculation[] {
     const serendipityCount = Math.ceil(recommendations.length * serendipityRate)
     
     if (serendipityCount === 0 || candidateWorks.length === 0) {

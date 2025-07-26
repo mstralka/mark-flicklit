@@ -58,8 +58,11 @@ model Work {
   otherTitles       String? // JSON array stored as text
 
   // Relations
-  authors          AuthorWork[]
-  userInteractions UserInteraction[]
+  authors              AuthorWork[]
+  userInteractions     UserInteraction[]
+  recommendationScores RecommendationScore[]
+  sourceWorkSimilarities WorkSimilarity[] @relation("SourceWorkSimilarity")
+  targetWorkSimilarities WorkSimilarity[] @relation("TargetWorkSimilarity")
 
   // Indexes for recommendation engine performance
   @@index([firstPublishDate], name: "idx_works_publish_date")
@@ -97,8 +100,9 @@ model User {
   emailVerified Boolean  @default(false)
   
   // Relations
-  interactions  UserInteraction[]
-  profile       UserProfile?
+  interactions        UserInteraction[]
+  profile             UserProfile?
+  recommendationScores RecommendationScore[]
   
   // Indexes
   @@index([email], name: "idx_users_email")
@@ -162,4 +166,50 @@ model UserInteraction {
   @@index([workId, liked, userId], name: "idx_user_interactions_work_liked_user")
   @@index([userId, liked, createdAt(sort: Desc)], name: "idx_user_interactions_user_liked_created")
   @@map("user_interactions")
+}
+
+model RecommendationScore {
+  id                   Int      @id @default(autoincrement())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  userId               Int
+  workId               Int
+  contentScore         Float
+  collaborativeScore   Float
+  noveltyBonus         Float
+  negativeMultiplier   Float
+  finalScore           Float
+  reasons              String   // JSON array of strings
+  
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  work                 Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  
+  // Indexes for recommendation queries
+  @@index([userId, finalScore(sort: Desc)], name: "idx_recommendation_scores_user_score")
+  @@index([workId, finalScore(sort: Desc)], name: "idx_recommendation_scores_work_score")
+  @@index([createdAt(sort: Desc)], name: "idx_recommendation_scores_created_at")
+  @@unique([userId, workId], name: "unique_user_work_recommendation")
+  @@map("recommendation_scores")
+}
+
+model WorkSimilarity {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  sourceWorkId   Int
+  targetWorkId   Int
+  similarity     Float
+  similarityType String // "content", "collaborative", "nlp", etc.
+  
+  sourceWork Work @relation("SourceWorkSimilarity", fields: [sourceWorkId], references: [id], onDelete: Cascade)
+  targetWork Work @relation("TargetWorkSimilarity", fields: [targetWorkId], references: [id], onDelete: Cascade)
+  
+  // Indexes for similarity queries
+  @@index([sourceWorkId, similarity(sort: Desc)], name: "idx_work_similarity_source_score")
+  @@index([targetWorkId, similarity(sort: Desc)], name: "idx_work_similarity_target_score")
+  @@index([similarityType], name: "idx_work_similarity_type")
+  @@unique([sourceWorkId, targetWorkId, similarityType], name: "unique_work_similarity")
+  @@map("work_similarities")
 }
