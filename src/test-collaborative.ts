@@ -5,7 +5,7 @@
  * Run with: yarn tsx src/test-collaborative.ts
  */
 
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@/generated/client'
 import { CollaborativeFilter } from './services/CollaborativeFilter'
 import { generateAnonymousUserId } from './api/recommendations'
 

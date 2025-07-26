@@ -35,3 +35,6 @@ data/
 
 # Claude Code
 .claude/settings.local.json
+
+# Ignore genrated files
+/src/generated/*

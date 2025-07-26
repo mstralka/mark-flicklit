@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@/generated/client'
 import type { 
   User, 
   RecommendationRequest, 
@@ -58,7 +58,7 @@ export class RecommendationEngine {
   /**
    * Record user interaction and update their profile
    */
-  async recordInteraction(userId: string, workId: string, liked: boolean): Promise<void> {
+  async recordInteraction(userId: string, workId: number, liked: boolean): Promise<void> {
     // Save interaction to database
     await this.prisma.userInteraction.create({
       data: {
@@ -104,7 +104,7 @@ export class RecommendationEngine {
   /**
    * Get candidate works for recommendations
    */
-  private async getCandidateWorks(excludeWorkIds: string[], limit: number): Promise<WorkWithAuthors[]> {
+  private async getCandidateWorks(excludeWorkIds: number[], limit: number): Promise<WorkWithAuthors[]> {
     const works = await this.prisma.work.findMany({
       where: {
         id: { notIn: excludeWorkIds }

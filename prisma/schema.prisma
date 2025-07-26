@@ -1,87 +1,105 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
 model Author {
-  id            String   @id @default(cuid())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // OpenLibrary fields
-  openLibraryId String?  @unique
-  name          String
-  personalName  String?
-  birthDate     String?
-  deathDate     String?
-  bio           String?
+  openLibraryId  String?  @unique
+  name           String
+  personalName   String?
+  birthDate      String?
+  deathDate      String?
+  bio            String?
   alternateNames String? // JSON array stored as text
-  location      String?
-  easternOrder  Boolean? @default(false)
-  wikipedia     String?
-  links         String? // JSON array stored as text
-  
+  location       String?
+  easternOrder   Boolean? @default(false)
+  wikipedia      String?
+  links          String? // JSON array stored as text
+
   // Relations
-  works         AuthorWork[]
-  
+  works AuthorWork[]
+
+  // Indexes for recommendation engine performance
+  @@index([name], name: "idx_authors_name")
+  @@index([birthDate], name: "idx_authors_birth_date")
   @@map("authors")
 }
 
 model Work {
-  id               String   @id @default(cuid())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // OpenLibrary fields
-  openLibraryId    String?  @unique
-  title            String
-  subtitle         String?
-  description      String?
-  firstPublishDate String?
-  firstSentence    String?
-  subjects         String? // JSON array stored as text
-  subjectPlaces    String? // JSON array stored as text
-  subjectTimes     String? // JSON array stored as text
-  subjectPeople    String? // JSON array stored as text
+  openLibraryId     String? @unique
+  title             String
+  subtitle          String?
+  description       String?
+  firstPublishDate  String?
+  firstSentence     String?
+  subjects          String? // JSON array stored as text
+  subjectPlaces     String? // JSON array stored as text
+  subjectTimes      String? // JSON array stored as text
+  subjectPeople     String? // JSON array stored as text
   originalLanguages String? // JSON array stored as text
-  otherTitles      String? // JSON array stored as text
-  
+  otherTitles       String? // JSON array stored as text
+
   // Relations
   authors          AuthorWork[]
   userInteractions UserInteraction[]
-  
+
+  // Indexes for recommendation engine performance
+  @@index([firstPublishDate], name: "idx_works_publish_date")
+  @@index([createdAt(sort: Desc)], name: "idx_works_created_at")
   @@map("works")
 }
 
 model AuthorWork {
-  id       String @id @default(cuid())
-  authorId String
-  workId   String
+  id       Int     @id @default(autoincrement())
+  authorId Int
+  workId   Int
   role     String? // e.g., "author", "editor", "translator"
-  
-  author   Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  work     Work   @relation(fields: [workId], references: [id], onDelete: Cascade)
-  
+
+  author Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  work   Work   @relation(fields: [workId], references: [id], onDelete: Cascade)
+
   @@unique([authorId, workId])
+  // Indexes for recommendation engine performance
+  @@index([authorId], name: "idx_author_work_author_id")
+  @@index([workId], name: "idx_author_work_work_id")
   @@map("author_work")
 }
 
 model UserInteraction {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  
-  workId    String
-  userId    String?  // Optional for now, can be added later for multi-user support
-  liked     Boolean  // true for swipe right (like), false for swipe left (dislike)
-  
-  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
-  
+
+  workId Int
+  userId String? // Optional for now, can be added later for multi-user support
+  liked  Boolean // true for swipe right (like), false for swipe left (dislike)
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  // Indexes for recommendation engine performance
+  @@index([userId, liked], name: "idx_user_interactions_user_liked")
+  @@index([workId, liked], name: "idx_user_interactions_work_liked")
+  @@index([createdAt(sort: Desc)], name: "idx_user_interactions_created_at")
+  @@index([userId, workId], name: "idx_user_interactions_user_work")
+  @@index([workId, userId], name: "idx_user_interactions_work_user")
+  @@index([workId, liked, userId], name: "idx_user_interactions_work_liked_user")
+  @@index([userId, liked, createdAt(sort: Desc)], name: "idx_user_interactions_user_liked_created")
   @@map("user_interactions")
 }

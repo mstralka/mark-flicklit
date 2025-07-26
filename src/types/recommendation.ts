@@ -25,12 +25,12 @@ export interface User {
 }
 
 export interface WorkSimilarity {
-  workId: string
+  workId: number
   similarity: number
 }
 
 export interface RecommendationScore {
-  workId: string
+  workId: number
   contentScore: number
   collaborativeScore: number
   noveltyBonus: number
@@ -42,7 +42,7 @@ export interface RecommendationScore {
 export interface RecommendationRequest {
   userId?: string // Optional for anonymous users
   limit: number
-  excludeWorkIds?: string[] // Works user has already seen
+  excludeWorkIds?: number[] // Works user has already seen
 }
 
 export interface RecommendationResponse {
@@ -54,7 +54,7 @@ export interface RecommendationResponse {
 export interface UserInteraction {
   id: string
   userId?: string
-  workId: string
+  workId: number
   liked: boolean
   createdAt: Date
 }
@@ -66,7 +66,7 @@ export interface ContentFeatures {
   subjectPeople: string[]
   originalLanguages: string[]
   firstPublishDate?: string
-  authorIds: string[]
+  authorIds: number[]
 }
 
 export interface SimilarityWeights {

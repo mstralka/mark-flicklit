@@ -5,7 +5,7 @@
  * Run with: yarn tsx src/test-recommendations.ts
  */
 
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@/generated/client'
 import { RecommendationEngine } from './services/RecommendationEngine'
 import { generateAnonymousUserId } from './api/recommendations'
 
@@ -27,7 +27,7 @@ async function testRecommendationEngine() {
     
     console.log(`Found ${initialRecs.recommendations.length} recommendations`)
     initialRecs.recommendations.forEach((rec, index) => {
-      console.log(`  ${index + 1}. Work ID: ${rec.workId.substring(0, 8)}... (Score: ${rec.finalScore.toFixed(3)})`)
+      console.log(`  ${index + 1}. Work ID: ${rec.workId} (Score: ${rec.finalScore.toFixed(3)})`)
       console.log(`     Reasons: ${rec.reasons.join(', ') || 'Popular recommendation'}`)
     })
     console.log()
@@ -45,10 +45,10 @@ async function testRecommendationEngine() {
     
     // User likes first book, dislikes second
     await engine.recordInteraction(testUserId, firstWork.workId, true)
-    console.log(`✅ Recorded LIKE for work ${firstWork.workId.substring(0, 8)}...`)
+    console.log(`✅ Recorded LIKE for work ${firstWork.workId}`)
     
     await engine.recordInteraction(testUserId, secondWork.workId, false)
-    console.log(`❌ Recorded DISLIKE for work ${secondWork.workId.substring(0, 8)}...`)
+    console.log(`❌ Recorded DISLIKE for work ${secondWork.workId}`)
     console.log()
 
     // Test 3: Get updated recommendations
@@ -74,7 +74,7 @@ async function testRecommendationEngine() {
     }
 
     updatedRecs.recommendations.forEach((rec, index) => {
-      console.log(`  ${index + 1}. Work ID: ${rec.workId.substring(0, 8)}... (Score: ${rec.finalScore.toFixed(3)})`)
+      console.log(`  ${index + 1}. Work ID: ${rec.workId} (Score: ${rec.finalScore.toFixed(3)})`)
       console.log(`     Content: ${rec.contentScore.toFixed(3)}, Collaborative: ${rec.collaborativeScore.toFixed(3)}, Novelty: ${rec.noveltyBonus.toFixed(3)}, Negative: ${rec.negativeMultiplier.toFixed(3)}`)
       console.log(`     Reasons: ${rec.reasons.join(', ') || 'No specific reasons'}`)
     })
@@ -88,7 +88,7 @@ async function testRecommendationEngine() {
 
     console.log(`Found ${anonRecs.recommendations.length} anonymous recommendations`)
     anonRecs.recommendations.forEach((rec, index) => {
-      console.log(`  ${index + 1}. Work ID: ${rec.workId.substring(0, 8)}... (Score: ${rec.finalScore.toFixed(3)})`)
+      console.log(`  ${index + 1}. Work ID: ${rec.workId} (Score: ${rec.finalScore.toFixed(3)})`)
     })
     console.log()
 

@@ -1,6 +1,6 @@
-import type { WorkWithAuthors } from '../models/Work'
-import type { ContentFeatures, SimilarityWeights, WorkSimilarity } from '../types/recommendation'
-import { DEFAULT_SIMILARITY_WEIGHTS } from '../types/recommendation'
+import type { WorkWithAuthors } from '@/models'
+import type { ContentFeatures, SimilarityWeights, WorkSimilarity } from '@/types'
+import { DEFAULT_SIMILARITY_WEIGHTS } from '@/types'
 
 export class ContentSimilarity {
   private weights: SimilarityWeights
@@ -22,7 +22,10 @@ export class ContentSimilarity {
     const peopleSim = this.calculateArraySimilarity(features1.subjectPeople, features2.subjectPeople)
     const languageSim = this.calculateArraySimilarity(features1.originalLanguages, features2.originalLanguages)
     const temporalSim = this.calculateTemporalSimilarity(features1.firstPublishDate, features2.firstPublishDate)
-    const authorSim = this.calculateArraySimilarity(features1.authorIds, features2.authorIds)
+    const authorSim = this.calculateArraySimilarity(
+      features1.authorIds.map(id => id.toString()), 
+      features2.authorIds.map(id => id.toString())
+    )
 
     return (
       subjectSim * this.weights.subjects +

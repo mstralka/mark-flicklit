@@ -3,7 +3,7 @@ import { parseJsonArray } from '../utils/json'
 
 // Raw database interface (how Prisma returns data)
 export interface WorkRaw {
-  id: string
+  id: number
   createdAt: Date
   updatedAt: Date
   
@@ -24,7 +24,7 @@ export interface WorkRaw {
 
 // Application interface (with parsed arrays)
 export interface Work {
-  id: string
+  id: number
   createdAt: Date
   updatedAt: Date
   
@@ -66,9 +66,9 @@ export interface WorkWithAuthors extends Work {
 }
 
 export interface AuthorWork {
-  id: string
-  authorId: string
-  workId: string
+  id: number
+  authorId: number
+  workId: number
   role?: string
   author: Author
 }

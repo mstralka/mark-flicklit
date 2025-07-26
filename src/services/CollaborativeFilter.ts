@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client'
-import type { UserInteraction } from '../types/recommendation'
+import { PrismaClient } from '@/generated/client'
+import type { UserInteraction } from '@/types'
 
 export interface UserSimilarity {
   userId: string
@@ -8,7 +8,7 @@ export interface UserSimilarity {
 }
 
 export interface CollaborativeRecommendation {
-  workId: string
+  workId: number
   score: number
   supportingUsers: string[]
   confidence: number
@@ -69,7 +69,7 @@ export class CollaborativeFilter {
    */
   async getCollaborativeRecommendations(
     targetUserId: string,
-    excludeWorkIds: string[] = [],
+    excludeWorkIds: number[] = [],
     limit: number = 10
   ): Promise<CollaborativeRecommendation[]> {
     const similarUsers = await this.findSimilarUsers(targetUserId)
@@ -89,7 +89,7 @@ export class CollaborativeFilter {
 
     // Calculate collaborative scores
     const recommendations: CollaborativeRecommendation[] = []
-    const workScores = new Map<string, { score: number; users: string[]; totalSimilarity: number }>()
+    const workScores = new Map<number, { score: number; users: string[]; totalSimilarity: number }>()
 
     for (const work of filteredWorks) {
       if (!workScores.has(work.workId)) {
@@ -200,7 +200,7 @@ export class CollaborativeFilter {
   /**
    * Get users who have interacted with common works
    */
-  private async getUsersWithCommonWorks(targetUserId: string, workIds: string[]): Promise<string[]> {
+  private async getUsersWithCommonWorks(targetUserId: string, workIds: number[]): Promise<string[]> {
     const interactions = await this.prisma.userInteraction.findMany({
       where: {
         workId: { in: workIds },
@@ -219,7 +219,7 @@ export class CollaborativeFilter {
   /**
    * Get work IDs that a user has already interacted with
    */
-  private async getUserWorkIds(userId: string): Promise<string[]> {
+  private async getUserWorkIds(userId: string): Promise<number[]> {
     const interactions = await this.prisma.userInteraction.findMany({
       where: { userId },
       select: { workId: true }
@@ -231,7 +231,7 @@ export class CollaborativeFilter {
   /**
    * Get liked works from similar users
    */
-  private async getLikedWorksBySimilarUsers(userIds: string[]): Promise<Array<{ workId: string; userId: string }>> {
+  private async getLikedWorksBySimilarUsers(userIds: string[]): Promise<Array<{ workId: number; userId: string }>> {
     const interactions = await this.prisma.userInteraction.findMany({
       where: {
         userId: { in: userIds },
@@ -247,7 +247,7 @@ export class CollaborativeFilter {
     })
 
     return interactions
-      .filter((interaction): interaction is { workId: string; userId: string } => 
+      .filter((interaction): interaction is { workId: number; userId: string } => 
         interaction.userId !== null
       )
   }

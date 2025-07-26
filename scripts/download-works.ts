@@ -3,7 +3,7 @@ import { pipeline } from 'stream/promises'
 import { createGunzip } from 'zlib'
 import { createReadStream } from 'fs'
 import * as readline from 'readline'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@/generated/client'
 
 const DUMP_URL = 'https://openlibrary.org/data/ol_dump_works_latest.txt.gz'
 const DUMP_FILE = './data/ol_dump_works_latest.txt.gz'
@@ -54,7 +54,7 @@ async function downloadFile(url: string, filePath: string): Promise<void> {
   if (existsSync(filePath) && !FORCE_DOWNLOAD) {
     const stats = statSync(filePath)
     console.log(`File ${filePath} already exists (${formatBytes(stats.size)}), skipping download`)
-    console.log(`Use --force-download to re-download`)
+    console.log('Use --force-download to re-download')
     return
   }
 
@@ -148,7 +148,7 @@ async function processWorksFile(filePath: string): Promise<void> {
         const columns = line.split('\t')
         if (columns.length < 5) continue
 
-        const [type, _key, _revision, _lastModified, jsonData] = columns
+        const [type, , , , jsonData] = columns
         
         // Only process work records
         if (type !== '/type/work') continue
@@ -207,7 +207,6 @@ async function processWorksFile(filePath: string): Promise<void> {
 
       } catch (error) {
         console.warn(`Error processing line: ${error}`)
-        continue
       }
     }
 

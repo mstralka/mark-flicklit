@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client'
-import type { User, UserInteraction } from '../types/recommendation'
-import type { WorkWithAuthors } from '../models/Work'
+import { PrismaClient } from '@/generated/client'
+import type { User, UserInteraction } from '@/types'
+import type { WorkWithAuthors } from '@/models'
 import { parseWork } from '../models/Work'
 import { parseAuthor } from '../models/Author'
 
@@ -47,7 +47,7 @@ export class UserBuilder {
   /**
    * Update user profile incrementally with new interaction
    */
-  async updateUserProfile(user: User, workId: string, liked: boolean): Promise<User> {
+  async updateUserProfile(user: User, workId: number, liked: boolean): Promise<User> {
     const work = await this.getWorkWithAuthors(workId)
     if (!work) return user
 
@@ -69,7 +69,7 @@ export class UserBuilder {
       
       // Add authors to dislike list
       work.authors.forEach(authorWork => {
-        const authorId = authorWork.authorId
+        const authorId = authorWork.authorId.toString()
         updatedUser.dislikedAuthors[authorId] = (updatedUser.dislikedAuthors[authorId] || 0) + 1
       })
       
@@ -127,7 +127,7 @@ export class UserBuilder {
   /**
    * Fetch works with author information
    */
-  private async getWorksWithAuthors(workIds: string[]): Promise<WorkWithAuthors[]> {
+  private async getWorksWithAuthors(workIds: number[]): Promise<WorkWithAuthors[]> {
     if (workIds.length === 0) return []
 
     const works = await this.prisma.work.findMany({
@@ -156,7 +156,7 @@ export class UserBuilder {
   /**
    * Get single work with authors
    */
-  private async getWorkWithAuthors(workId: string): Promise<WorkWithAuthors | null> {
+  private async getWorkWithAuthors(workId: number): Promise<WorkWithAuthors | null> {
     const works = await this.getWorksWithAuthors([workId])
     return works[0] || null
   }
@@ -197,7 +197,7 @@ export class UserBuilder {
 
     works.forEach(work => {
       work.authors.forEach(authorWork => {
-        const authorId = authorWork.authorId
+        const authorId = authorWork.authorId.toString()
         dislikes[authorId] = (dislikes[authorId] || 0) + 1
       })
     })

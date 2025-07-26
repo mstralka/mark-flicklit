@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client'
-import { RecommendationEngine } from '../services/RecommendationEngine'
-import type { RecommendationRequest, RecommendationResponse } from '../types/recommendation'
+import { PrismaClient } from '@/generated/client'
+import { RecommendationEngine } from '@/services'
+import type { RecommendationRequest, RecommendationResponse } from '@/types'
 
 const prisma = new PrismaClient()
 const recommendationEngine = new RecommendationEngine(prisma)
@@ -11,7 +11,7 @@ const recommendationEngine = new RecommendationEngine(prisma)
 export async function getRecommendations(
   userId?: string,
   limit: number = 10,
-  excludeWorkIds: string[] = []
+  excludeWorkIds: number[] = []
 ): Promise<RecommendationResponse> {
   try {
     const request: RecommendationRequest = {
@@ -33,7 +33,7 @@ export async function getRecommendations(
  */
 export async function recordUserInteraction(
   userId: string,
-  workId: string,
+  workId: number,
   liked: boolean
 ): Promise<{ success: boolean; message: string }> {
   try {
