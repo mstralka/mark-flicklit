@@ -51,7 +51,7 @@ export function GoogleBooksTable() {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: pagination.limit.toString(),
+        limit: (pagination?.limit || 50).toString(),
         ...(search && { search })
       })
 
@@ -62,7 +62,7 @@ export function GoogleBooksTable() {
       }
       
       if (response.data) {
-        setBooks(response.data.data)
+        setBooks(Array.isArray(response.data.data) ? response.data.data : [])
         setPagination(response.data.pagination)
       }
     } catch (error) {
@@ -96,13 +96,15 @@ export function GoogleBooksTable() {
 
   // Handle page changes
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
+    if (pagination && newPage >= 1 && newPage <= pagination.totalPages) {
       fetchBooks(newPage, searchTerm)
     }
   }
 
   // Generate smart pagination buttons
   const generatePageNumbers = () => {
+    if (!pagination) return []
+    
     const current = pagination.page
     const total = pagination.totalPages
     const pages: (number | string)[] = []
@@ -155,14 +157,14 @@ export function GoogleBooksTable() {
               Google Books
             </h3>
             <p className="mt-2 max-w-4xl text-sm text-gray-500">
-              {pagination.total > 0 
+              {pagination?.total > 0 
                 ? `${formatNumber(pagination.total)} books imported from Google Books API`
                 : 'Loading book data...'
               }
             </p>
           </div>
           <button
-            onClick={() => fetchBooks(pagination.page, searchTerm)}
+            onClick={() => fetchBooks(pagination?.page || 1, searchTerm)}
             disabled={loading}
             className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
           >
@@ -224,14 +226,14 @@ export function GoogleBooksTable() {
                   <p className="mt-2">Loading books...</p>
                 </td>
               </tr>
-            ) : books.length === 0 ? (
+            ) : !books || books.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
                   {searchTerm ? 'No books found matching your search.' : 'No books available.'}
                 </td>
               </tr>
             ) : (
-              books.map((book) => (
+              (books || []).map((book) => (
                 <tr key={book.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
@@ -301,14 +303,14 @@ export function GoogleBooksTable() {
       </div>
 
       {/* Intelligent Pagination */}
-      {pagination.totalPages > 1 && (
+      {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
           <div className="flex flex-1 justify-between sm:hidden">
             <button
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={!pagination.hasPrev}
+              onClick={() => handlePageChange((pagination?.page || 1) - 1)}
+              disabled={!pagination?.hasPrev}
               className={`relative inline-flex items-center rounded-md px-4 py-2 text-sm font-medium ${
-                pagination.hasPrev
+                pagination?.hasPrev
                   ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
                   : 'text-gray-400 bg-gray-100 border border-gray-300 cursor-not-allowed'
               }`}
@@ -316,10 +318,10 @@ export function GoogleBooksTable() {
               Previous
             </button>
             <button
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={!pagination.hasNext}
+              onClick={() => handlePageChange((pagination?.page || 1) + 1)}
+              disabled={!pagination?.hasNext}
               className={`relative ml-3 inline-flex items-center rounded-md px-4 py-2 text-sm font-medium ${
-                pagination.hasNext
+                pagination?.hasNext
                   ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
                   : 'text-gray-400 bg-gray-100 border border-gray-300 cursor-not-allowed'
               }`}
@@ -332,24 +334,24 @@ export function GoogleBooksTable() {
               <p className="text-sm text-gray-700">
                 Showing{' '}
                 <span className="font-medium">
-                  {((pagination.page - 1) * pagination.limit + 1).toLocaleString()}
+                  {(((pagination?.page || 1) - 1) * (pagination?.limit || 50) + 1).toLocaleString()}
                 </span>{' '}
                 to{' '}
                 <span className="font-medium">
-                  {Math.min(pagination.page * pagination.limit, pagination.total).toLocaleString()}
+                  {Math.min((pagination?.page || 1) * (pagination?.limit || 50), pagination?.total || 0).toLocaleString()}
                 </span>{' '}
                 of{' '}
-                <span className="font-medium">{formatNumber(pagination.total)}</span> results
+                <span className="font-medium">{formatNumber(pagination?.total || 0)}</span> results
               </p>
             </div>
             <div>
               <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm">
                 {/* Previous button */}
                 <button
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={!pagination.hasPrev}
+                  onClick={() => handlePageChange((pagination?.page || 1) - 1)}
+                  disabled={!pagination?.hasPrev}
                   className={`relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${
-                    !pagination.hasPrev ? 'cursor-not-allowed opacity-50' : ''
+                    !pagination?.hasPrev ? 'cursor-not-allowed opacity-50' : ''
                   }`}
                 >
                   <span className="sr-only">Previous</span>
@@ -372,7 +374,7 @@ export function GoogleBooksTable() {
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum as number)}
                       className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                        pagination.page === pageNum
+                        pagination?.page === pageNum
                           ? 'z-10 bg-indigo-600 text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
                           : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
                       }`}
@@ -384,10 +386,10 @@ export function GoogleBooksTable() {
 
                 {/* Next button */}
                 <button
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={!pagination.hasNext}
+                  onClick={() => handlePageChange((pagination?.page || 1) + 1)}
+                  disabled={!pagination?.hasNext}
                   className={`relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${
-                    !pagination.hasNext ? 'cursor-not-allowed opacity-50' : ''
+                    !pagination?.hasNext ? 'cursor-not-allowed opacity-50' : ''
                   }`}
                 >
                   <span className="sr-only">Next</span>
