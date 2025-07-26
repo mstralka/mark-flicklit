@@ -1,8 +1,34 @@
 import { PrismaClient } from '@/generated/client'
-import type { User, UserInteraction } from '@/types'
+import type { UserInteraction } from '@/types'
 import type { WorkWithAuthors } from '@/models'
 import { parseWork } from '../models/Work'
 import { parseAuthor } from '../models/Author'
+
+export interface UserProfile {
+  id: number
+  createdAt: Date
+  updatedAt: Date
+  
+  // Preference weights (0-1 scale)
+  subjectPreferences: Record<string, number>
+  placePreferences: Record<string, number>
+  timePreferences: Record<string, number>
+  peoplePreferences: Record<string, number>
+  languagePreferences: Record<string, number>
+  
+  // Temporal preferences
+  preferredPublishEra?: string
+  
+  // Negative preferences (subjects/attributes to avoid)
+  dislikedSubjects: Record<string, number>
+  dislikedPlaces: Record<string, number>
+  dislikedAuthors: Record<string, number>
+  
+  // Interaction stats
+  totalLikes: number
+  totalDislikes: number
+  lastInteractionAt?: Date
+}
 
 export class UserBuilder {
   private prisma: PrismaClient
@@ -14,7 +40,7 @@ export class UserBuilder {
   /**
    * Build or update user profile based on interaction history
    */
-  async buildUserProfile(userId: string): Promise<User> {
+  async buildUserProfile(userId: number): Promise<UserProfile> {
     const interactions = await this.getUserInteractions(userId)
     const likedWorks = await this.getLikedWorks(interactions)
     const dislikedWorks = await this.getDislikedWorks(interactions)
@@ -47,7 +73,7 @@ export class UserBuilder {
   /**
    * Update user profile incrementally with new interaction
    */
-  async updateUserProfile(user: User, workId: number, liked: boolean): Promise<User> {
+  async updateUserProfile(user: UserProfile, workId: number, liked: boolean): Promise<UserProfile> {
     const work = await this.getWorkWithAuthors(workId)
     if (!work) return user
 
@@ -92,7 +118,7 @@ export class UserBuilder {
   /**
    * Get user interaction history
    */
-  private async getUserInteractions(userId: string): Promise<UserInteraction[]> {
+  private async getUserInteractions(userId: number): Promise<UserInteraction[]> {
     const interactions = await this.prisma.userInteraction.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -101,7 +127,7 @@ export class UserBuilder {
 
     return interactions.map(interaction => ({
       id: interaction.id,
-      userId: interaction.userId || undefined,
+      userId: interaction.userId,
       workId: interaction.workId,
       liked: interaction.liked,
       createdAt: interaction.createdAt

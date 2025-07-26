@@ -7,7 +7,6 @@
 
 import { PrismaClient } from '@/generated/client'
 import { RecommendationEngine } from './services/RecommendationEngine'
-import { generateAnonymousUserId } from './api/recommendations'
 
 const prisma = new PrismaClient()
 
@@ -15,7 +14,7 @@ async function testRecommendationEngine() {
   console.log('🧪 Testing FlickLit Recommendation Engine...\n')
 
   const engine = new RecommendationEngine(prisma)
-  const testUserId = generateAnonymousUserId()
+  const testUserId = Math.floor(Math.random() * 1000000)
 
   try {
     // Test 1: Get recommendations for new user (should return popular books)

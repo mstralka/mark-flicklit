@@ -1,7 +1,45 @@
-export interface User {
-  id: string
+// Raw database interfaces
+export interface UserRaw {
+  id: number
   createdAt: Date
   updatedAt: Date
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  status: 'Active' | 'Inactive'
+  emailVerified: boolean
+}
+
+export interface UserProfileRaw {
+  id: number
+  createdAt: Date
+  updatedAt: Date
+  userId: number
+  subjectPreferences?: string | null
+  placePreferences?: string | null
+  timePreferences?: string | null
+  peoplePreferences?: string | null
+  languagePreferences?: string | null
+  preferredPublishEra?: string | null
+  dislikedSubjects?: string | null
+  dislikedPlaces?: string | null
+  dislikedAuthors?: string | null
+  totalLikes: number
+  totalDislikes: number
+  lastInteractionAt?: Date | null
+}
+
+// Application interfaces
+export interface User {
+  id: number
+  createdAt: Date
+  updatedAt: Date
+  firstName: string
+  lastName: string
+  email: string
+  status: 'Active' | 'Inactive'
+  emailVerified: boolean
   
   // Preference weights (0-1 scale)
   subjectPreferences: Record<string, number>
@@ -11,7 +49,7 @@ export interface User {
   languagePreferences: Record<string, number>
   
   // Temporal preferences
-  preferredPublishEra?: string // e.g., "1900-1950", "modern"
+  preferredPublishEra?: string
   
   // Negative preferences (subjects/attributes to avoid)
   dislikedSubjects: Record<string, number>
@@ -40,7 +78,7 @@ export interface RecommendationScore {
 }
 
 export interface RecommendationRequest {
-  userId?: string // Optional for anonymous users
+  userId?: number // Optional for anonymous users
   limit: number
   excludeWorkIds?: number[] // Works user has already seen
 }
@@ -53,7 +91,7 @@ export interface RecommendationResponse {
 
 export interface UserInteraction {
   id: string
-  userId?: string
+  userId: number
   workId: number
   liked: boolean
   createdAt: Date
@@ -87,4 +125,58 @@ export const DEFAULT_SIMILARITY_WEIGHTS: SimilarityWeights = {
   languages: 0.1,
   temporal: 0.05,
   authors: 0.05
+}
+
+// Utility functions for parsing JSON fields
+function parseJsonRecord(jsonString: string | null | undefined): Record<string, number> {
+  if (!jsonString) return {}
+  try {
+    return JSON.parse(jsonString) || {}
+  } catch {
+    return {}
+  }
+}
+
+export function parseUserProfile(raw: UserProfileRaw): Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email' | 'status' | 'emailVerified'> {
+  return {
+    subjectPreferences: parseJsonRecord(raw.subjectPreferences),
+    placePreferences: parseJsonRecord(raw.placePreferences),
+    timePreferences: parseJsonRecord(raw.timePreferences),
+    peoplePreferences: parseJsonRecord(raw.peoplePreferences),
+    languagePreferences: parseJsonRecord(raw.languagePreferences),
+    preferredPublishEra: raw.preferredPublishEra || undefined,
+    dislikedSubjects: parseJsonRecord(raw.dislikedSubjects),
+    dislikedPlaces: parseJsonRecord(raw.dislikedPlaces),
+    dislikedAuthors: parseJsonRecord(raw.dislikedAuthors),
+    totalLikes: raw.totalLikes,
+    totalDislikes: raw.totalDislikes,
+    lastInteractionAt: raw.lastInteractionAt || undefined,
+  }
+}
+
+export function parseUser(userRaw: UserRaw, profileRaw?: UserProfileRaw | null): User {
+  const profileData = profileRaw ? parseUserProfile(profileRaw) : {
+    subjectPreferences: {},
+    placePreferences: {},
+    timePreferences: {},
+    peoplePreferences: {},
+    languagePreferences: {},
+    dislikedSubjects: {},
+    dislikedPlaces: {},
+    dislikedAuthors: {},
+    totalLikes: 0,
+    totalDislikes: 0,
+  }
+
+  return {
+    id: userRaw.id,
+    createdAt: userRaw.createdAt,
+    updatedAt: userRaw.updatedAt,
+    firstName: userRaw.firstName,
+    lastName: userRaw.lastName,
+    email: userRaw.email,
+    status: userRaw.status,
+    emailVerified: userRaw.emailVerified,
+    ...profileData,
+  }
 }

@@ -9,7 +9,7 @@ const recommendationEngine = new RecommendationEngine(prisma)
  * API Handler for getting recommendations
  */
 export async function getRecommendations(
-  userId?: string,
+  userId?: number,
   limit: number = 10,
   excludeWorkIds: number[] = []
 ): Promise<RecommendationResponse> {
@@ -32,7 +32,7 @@ export async function getRecommendations(
  * API Handler for recording user interactions
  */
 export async function recordUserInteraction(
-  userId: string,
+  userId: number,
   workId: number,
   liked: boolean
 ): Promise<{ success: boolean; message: string }> {
@@ -55,7 +55,7 @@ export async function recordUserInteraction(
 /**
  * API Handler for getting user profile
  */
-export async function getUserProfile(userId: string) {
+export async function getUserProfile(userId: number) {
   try {
     // Get recommendations to build/update user profile
     const response = await getRecommendations(userId, 1)
@@ -75,8 +75,8 @@ export async function getUserProfile(userId: string) {
 /**
  * Helper function to generate anonymous user ID
  */
-export function generateAnonymousUserId(): string {
-  return `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+export function generateAnonymousUserId(): number {
+  return Math.floor(Math.random() * 1000000) + Date.now() % 1000000
 }
 
 /**

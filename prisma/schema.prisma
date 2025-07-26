@@ -83,15 +83,75 @@ model AuthorWork {
   @@map("author_work")
 }
 
+model User {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Authentication fields
+  firstName     String
+  lastName      String
+  email         String   @unique
+  password      String   // Hashed password
+  status        UserStatus @default(Active)
+  emailVerified Boolean  @default(false)
+  
+  // Relations
+  interactions  UserInteraction[]
+  profile       UserProfile?
+  
+  // Indexes
+  @@index([email], name: "idx_users_email")
+  @@index([status], name: "idx_users_status")
+  @@map("users")
+}
+
+enum UserStatus {
+  Active
+  Inactive
+}
+
+model UserProfile {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Preference weights (0-1 scale) stored as JSON strings
+  subjectPreferences  String? // JSON: Record<string, number>
+  placePreferences    String? // JSON: Record<string, number>
+  timePreferences     String? // JSON: Record<string, number>
+  peoplePreferences   String? // JSON: Record<string, number>
+  languagePreferences String? // JSON: Record<string, number>
+  
+  // Temporal preferences
+  preferredPublishEra String?
+  
+  // Negative preferences stored as JSON strings
+  dislikedSubjects String? // JSON: Record<string, number>
+  dislikedPlaces   String? // JSON: Record<string, number>
+  dislikedAuthors  String? // JSON: Record<string, number>
+  
+  // Interaction stats
+  totalLikes        Int      @default(0)
+  totalDislikes     Int      @default(0)
+  lastInteractionAt DateTime?
+  
+  @@map("user_profiles")
+}
+
 model UserInteraction {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
   workId Int
-  userId String? // Optional for now, can be added later for multi-user support
+  userId Int
   liked  Boolean // true for swipe right (like), false for swipe left (dislike)
 
   work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Indexes for recommendation engine performance
   @@index([userId, liked], name: "idx_user_interactions_user_liked")

@@ -7,7 +7,6 @@
 
 import { PrismaClient } from '@/generated/client'
 import { CollaborativeFilter } from './services/CollaborativeFilter'
-import { generateAnonymousUserId } from './api/recommendations'
 
 const prisma = new PrismaClient()
 
@@ -17,9 +16,10 @@ async function testCollaborativeFiltering() {
   const collaborativeFilter = new CollaborativeFilter(prisma)
   
   // Create test users
-  const user1 = generateAnonymousUserId()
-  const user2 = generateAnonymousUserId()
-  const user3 = generateAnonymousUserId()
+  const user1 = Math.floor(Math.random() * 1000000)
+  const user2 = Math.floor(Math.random() * 1000000)
+  const user3 = Math.floor(Math.random() * 1000000)
+  let newUser = 0
 
   try {
     // Get some works to test with
@@ -84,7 +84,7 @@ async function testCollaborativeFiltering() {
     
     console.log(`Found ${similarUsers.length} similar users for user1:`)
     similarUsers.forEach((similar, index) => {
-      console.log(`  ${index + 1}. User ${similar.userId.substring(0, 8)}... (Similarity: ${similar.similarity.toFixed(3)}, Common: ${similar.commonInteractions})`)
+      console.log(`  ${index + 1}. User ${similar.userId} (Similarity: ${similar.similarity.toFixed(3)}, Common: ${similar.commonInteractions})`)
     })
     console.log()
 
@@ -112,7 +112,7 @@ async function testCollaborativeFiltering() {
 
     // Test 5: Test edge cases
     console.log('🧪 Test 5: Testing edge cases...')
-    const newUser = generateAnonymousUserId()
+    newUser = Math.floor(Math.random() * 1000000)
     const newUserSimilar = await collaborativeFilter.findSimilarUsers(newUser)
     const newUserRecs = await collaborativeFilter.getCollaborativeRecommendations(newUser)
     
@@ -129,7 +129,7 @@ async function testCollaborativeFiltering() {
     // Clean up test data
     await prisma.userInteraction.deleteMany({
       where: {
-        userId: { in: [user1, user2, user3] }
+        userId: { in: [user1, user2, user3, newUser] }
       }
     })
     await prisma.$disconnect()

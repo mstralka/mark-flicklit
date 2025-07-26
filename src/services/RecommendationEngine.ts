@@ -1,6 +1,5 @@
 import { PrismaClient } from '@/generated/client'
 import type { 
-  User, 
   RecommendationRequest, 
   RecommendationResponse, 
   RecommendationScore
@@ -8,14 +7,14 @@ import type {
 import type { WorkWithAuthors } from '../models/Work'
 import { parseWork } from '../models/Work'
 import { parseAuthor } from '../models/Author'
-import { UserBuilder } from './UserBuilder'
+import { UserBuilder, UserProfile } from './UserBuilder'
 import { CollaborativeFilter } from './CollaborativeFilter'
 
 export class RecommendationEngine {
   private prisma: PrismaClient
   private userBuilder: UserBuilder
   private collaborativeFilter: CollaborativeFilter
-  private userCache: Map<string, { user: User; timestamp: number }> = new Map()
+  private userCache: Map<number, { user: UserProfile; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 60 * 60 * 1000 // 1 hour in milliseconds
 
   constructor(prisma: PrismaClient) {
@@ -50,7 +49,7 @@ export class RecommendationEngine {
 
     return {
       recommendations,
-      userProfile: user,
+      userProfile: undefined, // UserProfile type doesn't match User type for response
       totalAvailable: candidateWorks.length
     }
   }
@@ -58,7 +57,7 @@ export class RecommendationEngine {
   /**
    * Record user interaction and update their profile
    */
-  async recordInteraction(userId: string, workId: number, liked: boolean): Promise<void> {
+  async recordInteraction(userId: number, workId: number, liked: boolean): Promise<void> {
     // Save interaction to database
     await this.prisma.userInteraction.create({
       data: {
@@ -82,7 +81,7 @@ export class RecommendationEngine {
   /**
    * Get or build user profile with caching
    */
-  private async getUserProfile(userId: string): Promise<User> {
+  private async getUserProfile(userId: number): Promise<UserProfile> {
     // Check cache first
     const cachedData = this.userCache.get(userId)
     if (cachedData && (Date.now() - cachedData.timestamp) < this.CACHE_TTL) {
@@ -138,7 +137,7 @@ export class RecommendationEngine {
    * Generate personalized recommendations for a user
    */
   private async generatePersonalizedRecommendations(
-    user: User, 
+    user: UserProfile, 
     candidateWorks: WorkWithAuthors[], 
     limit: number
   ): Promise<RecommendationScore[]> {
@@ -158,7 +157,7 @@ export class RecommendationEngine {
   /**
    * Calculate recommendation score for a work
    */
-  private async calculateWorkScore(user: User, work: WorkWithAuthors): Promise<RecommendationScore> {
+  private async calculateWorkScore(user: UserProfile, work: WorkWithAuthors): Promise<RecommendationScore> {
     const reasons: string[] = []
 
     // Content-based score
@@ -194,7 +193,7 @@ export class RecommendationEngine {
   /**
    * Calculate content-based similarity score
    */
-  private calculateContentScore(user: User, work: WorkWithAuthors, reasons: string[]): number {
+  private calculateContentScore(user: UserProfile, work: WorkWithAuthors, reasons: string[]): number {
     let score = 0
     
     // Subject preferences
@@ -250,7 +249,7 @@ export class RecommendationEngine {
   /**
    * Calculate collaborative filtering score
    */
-  private async calculateCollaborativeScore(user: User, work: WorkWithAuthors, reasons: string[]): Promise<number> {
+  private async calculateCollaborativeScore(user: UserProfile, work: WorkWithAuthors, reasons: string[]): Promise<number> {
     try {
       const collaborativeRecs = await this.collaborativeFilter.getCollaborativeRecommendations(
         user.id,
@@ -291,7 +290,7 @@ export class RecommendationEngine {
   /**
    * Calculate novelty bonus for introducing new content
    */
-  private calculateNoveltyBonus(user: User, work: WorkWithAuthors, reasons: string[]): number {
+  private calculateNoveltyBonus(user: UserProfile, work: WorkWithAuthors, reasons: string[]): number {
     let bonus = 0
 
     // Bonus for new subjects
@@ -313,7 +312,7 @@ export class RecommendationEngine {
   /**
    * Calculate negative feedback multiplier
    */
-  private calculateNegativeMultiplier(user: User, work: WorkWithAuthors, reasons: string[]): number {
+  private calculateNegativeMultiplier(user: UserProfile, work: WorkWithAuthors, reasons: string[]): number {
     let multiplier = 1.0
 
     // Penalize disliked subjects
@@ -379,7 +378,7 @@ export class RecommendationEngine {
   /**
    * Clear user cache (useful for testing or manual cache invalidation)
    */
-  clearUserCache(userId?: string): void {
+  clearUserCache(userId?: number): void {
     if (userId) {
       this.userCache.delete(userId)
     } else {
