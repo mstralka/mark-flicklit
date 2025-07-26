@@ -9,9 +9,13 @@ FlickLit is a TypeScript web application for book recommendations with swipe fun
 **Tech Stack:**
 - TypeScript
 - React 18
-- Zustand (state management)
 - React Router
+- Zustand (state management)
 - Prisma ORM with SQLite/MySQL
+- Tailwind CSS (styling)
+- Headless UI (accessible components)
+- React Hook Form + Zod (forms & validation)
+- Heroicons (icons)
 - Vite (build tool)
 - ESLint
 
