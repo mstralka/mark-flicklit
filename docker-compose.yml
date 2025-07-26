@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # Database
+  mysql:
+    image: mysql:8.0
+    container_name: flicklit_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-flicklit}
+      MYSQL_USER: ${MYSQL_USER:-flicklit}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    networks:
+      - flicklit_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Cache/Session Store (Redis-compatible)
+  valkey:
+    image: valkey/valkey:7
+    container_name: flicklit_valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+    networks:
+      - flicklit_network
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    container_name: flicklit_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: mysql://${MYSQL_USER:-flicklit}:${MYSQL_PASSWORD:-password}@mysql:3306/${MYSQL_DATABASE:-flicklit}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      PORT: 3001
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      VALKEY_URL: redis://valkey:6379
+    ports:
+      - "3001:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - flicklit_network
+    volumes:
+      - ./data:/app/data  # For OpenLibrary data files
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend (React app)
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost/api}
+    container_name: flicklit_frontend
+    restart: unless-stopped
+    networks:
+      - flicklit_network
+
+  # Reverse Proxy & Static Files
+  nginx:
+    image: nginx:1.29-alpine
+    container_name: flicklit_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro  # For SSL certificates
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - flicklit_network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mysql_data:
+    driver: local
+  valkey_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  flicklit_network:
+    driver: bridge
