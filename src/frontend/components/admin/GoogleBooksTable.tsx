@@ -27,8 +27,10 @@ interface PaginationInfo {
 }
 
 interface GoogleBooksResponse {
+  success: boolean
   data: GoogleBook[]
   pagination: PaginationInfo
+  error?: string
 }
 
 export function GoogleBooksTable() {
@@ -55,15 +57,15 @@ export function GoogleBooksTable() {
         ...(search && { search })
       })
 
-      const response = await apiClient.get<GoogleBooksResponse>(`/api/admin/google-books?${params}`)
+      const response = await apiClient.get(`/api/admin/google-books?${params}`) as GoogleBooksResponse
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch books')
       }
       
       if (response.data) {
-        setBooks(Array.isArray(response.data.data) ? response.data.data : [])
-        setPagination(response.data.pagination)
+        setBooks(Array.isArray(response.data) ? response.data : [])
+        setPagination(response.pagination)
       }
     } catch (error) {
       console.error('Error fetching Google Books:', error)
