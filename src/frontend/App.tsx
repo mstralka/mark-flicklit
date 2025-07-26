@@ -10,6 +10,8 @@ const RegisterForm = lazy(() => import('./components/auth/RegisterForm').then(m 
 const ResetPasswordForm = lazy(() => import('./components/auth/ResetPasswordForm').then(m => ({ default: m.ResetPasswordForm })))
 const EmailVerification = lazy(() => import('./components/auth/EmailVerification').then(m => ({ default: m.EmailVerification })))
 const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })))
+const TermsOfService = lazy(() => import('./pages/TermsOfService'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 
 function App() {
   const { initialize } = useAuthStore()
@@ -71,6 +73,10 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            
+            {/* Public legal pages */}
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           </Routes>
         </Suspense>
       </div>

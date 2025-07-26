@@ -40,69 +40,84 @@ export function EmailVerification() {
     await verifyEmail()
   }
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 text-center">
-        <div>
-          <EnvelopeIcon className="mx-auto h-12 w-12 text-primary-600" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Check your email
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            We've sent a verification link to
-          </p>
-          <p className="text-sm font-medium text-gray-900">{user.email}</p>
-        </div>
-        
-        {error && (
-          <div className="rounded-md bg-red-50 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  {error}
-                </h3>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4">
+      <div className="w-full max-w-md">
+        {/* Main Card */}
+        <div className="bg-white/80 backdrop-blur-sm shadow-2xl shadow-blue-500/10 rounded-2xl border border-white/20 p-8 text-center">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl mb-4">
+              <EnvelopeIcon className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Check your email
+            </h1>
+            <p className="text-gray-600 mb-2">
+              We've sent a verification link to
+            </p>
+            <p className="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg inline-block">
+              {user.email}
+            </p>
+          </div>
+          
+          {/* Error Alert */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-3 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-800">{error}</p>
               </div>
             </div>
-          </div>
-        )}
-        
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Click the link in the email to verify your account. If you don't see the email, check your spam folder.
-          </p>
+          )}
           
-          <Button
-            onClick={handleResendEmail}
-            variant="outline"
-            className="w-full mb-2"
-            loading={isLoading}
-          >
-            Resend verification email
-          </Button>
-          
-          {/* Demo button - remove in production */}
-          <Button
-            onClick={handleVerifyNow}
-            className="w-full"
-            loading={isLoading}
-          >
-            Verify Email Now (Demo)
-          </Button>
-          
-          <div className="text-center">
-            <span className="text-sm text-gray-600">
-              Wrong email?{' '}
-              <Link
-                to="/auth/register"
-                className="font-medium text-primary-600 hover:text-primary-500"
+          {/* Content */}
+          <div className="space-y-6">
+            <p className="text-gray-600 text-left bg-gray-50 p-4 rounded-xl">
+              Click the link in the email to verify your account. If you don't see the email, check your spam folder.
+            </p>
+            
+            {/* Buttons */}
+            <div className="space-y-3">
+              <Button
+                onClick={handleResendEmail}
+                variant="outline"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
+                size="lg"
+                loading={isLoading}
               >
-                Sign up again
-              </Link>
-            </span>
+                Resend verification email
+              </Button>
+              
+              {/* Demo button - remove in production */}
+              <Button
+                onClick={handleVerifyNow}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+                size="lg"
+                loading={isLoading}
+              >
+                Verify Email Now (Demo)
+              </Button>
+            </div>
+            
+            {/* Sign Up Link */}
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-gray-600">
+                Wrong email?{' '}
+                <Link
+                  to="/auth/register"
+                  className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+                >
+                  Sign up again
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-sm text-gray-500 mt-8">
+          Check your email and click the verification link to continue
+        </p>
       </div>
     </div>
   )

@@ -43,91 +43,98 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4">
+      <div className="w-full max-w-md">
+        {/* Main Card */}
+        <div className="bg-white/80 backdrop-blur-sm shadow-2xl shadow-blue-500/10 rounded-2xl border border-white/20 p-8">
+          {/* Back Link */}
           <Link
             to="/auth/login"
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6 transition-colors"
           >
-            <ArrowLeftIcon className="h-4 w-4 mr-1" />
+            <ArrowLeftIcon className="h-4 w-4 mr-2" />
             Back to sign in
           </Link>
           
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Reset your password
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your email address and we'll send you a link to reset your password
-          </p>
-        </div>
-        
-        {error && (
-          <div className="rounded-md bg-red-50 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  {error}
-                </h3>
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl mb-4">
+              <span className="text-2xl font-bold text-white">🔑</span>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Reset your password
+            </h1>
+            <p className="text-gray-600">
+              Enter your email address and we'll send you a link to reset your password
+            </p>
+          </div>
+          
+          {/* Error Alert */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-3 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-800">{error}</p>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {success && (
-          <div className="rounded-md bg-green-50 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <CheckCircleIcon className="h-5 w-5 text-green-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-green-800">
+          {/* Success Alert */}
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <div className="flex items-center">
+                <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                <p className="text-sm font-medium text-green-800">
                   Password reset email sent! Check your inbox for instructions.
-                </h3>
+                </p>
               </div>
             </div>
-          </div>
-        )}
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(handleResetPassword)}>
-          <div>
-            <Input
-              {...register('email')}
-              type="email"
-              label="Email address"
-              placeholder="Enter your email"
-              error={errors.email?.message}
-              autoComplete="email"
-            />
-          </div>
+          )}
+          
+          {/* Form */}
+          <form onSubmit={handleSubmit(handleResetPassword)} className="space-y-6">
+            {/* Email Field */}
+            <div className="space-y-2">
+              <Input
+                {...register('email')}
+                type="email"
+                label="Email address"
+                placeholder="Enter your email"
+                error={errors.email?.message}
+                autoComplete="email"
+              />
+            </div>
 
-          <div>
+            {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
               size="lg"
               loading={isLoading}
               disabled={success}
             >
-              Send reset link
+              {isLoading ? 'Sending...' : 'Send reset link'}
             </Button>
-          </div>
 
-          <div className="text-center">
-            <span className="text-sm text-gray-600">
-              Remember your password?{' '}
-              <Link
-                to="/auth/login"
-                className="font-medium text-primary-600 hover:text-primary-500"
-              >
-                Sign in
-              </Link>
-            </span>
-          </div>
-        </form>
+            {/* Sign In Link */}
+            <div className="text-center">
+              <p className="text-gray-600">
+                Remember your password?{' '}
+                <Link
+                  to="/auth/login"
+                  className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-sm text-gray-500 mt-8">
+          We'll send you a secure link to reset your password
+        </p>
       </div>
     </div>
   )
