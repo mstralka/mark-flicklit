@@ -3,7 +3,11 @@ import { pipeline } from 'stream/promises'
 import { createGunzip } from 'zlib'
 import { createReadStream } from 'fs'
 import * as readline from 'readline'
-import { PrismaClient } from '../generated/client'
+import { PrismaClient } from '../src/backend/generated/client'
+import dotenv from 'dotenv'
+
+// Load environment variables
+dotenv.config()
 
 const DUMP_URL = 'https://openlibrary.org/data/ol_dump_authors_latest.txt.gz'
 const DUMP_FILE = './data/ol_dump_authors_latest.txt.gz'
