@@ -14,7 +14,8 @@ class ApiClient {
   private token: string | null = null
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+    // In development, use proxy. In production, use environment variable
+    this.baseURL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
   }
 
   setToken(token: string | null) {
